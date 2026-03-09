@@ -161,7 +161,7 @@
             <div class="mt-12 grid grid-cols-1 gap-6 md:grid-cols-4">
                 <div class="rounded-xl border border-green-200 bg-white p-6 shadow-sm transition hover:border-orange-500 hover:shadow-md">
                     <div class="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-green-50 text-green-700">
-                        <span class="text-xl" aria-hidden="true">♻️</span>
+                        <i class="fa-solid fa-recycle text-xl" aria-hidden="true"></i>
                     </div>
                     <h3 class="font-heading mt-4 text-lg font-bold text-slate-900">Sampah Rumah</h3>
                     <p class="mt-2 text-sm text-slate-600">Sampah harian, pindahan, dan bersih-bersih rumah.</p>
@@ -169,7 +169,7 @@
 
                 <div class="rounded-xl border border-green-200 bg-white p-6 shadow-sm transition hover:border-orange-500 hover:shadow-md">
                     <div class="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-green-50 text-green-700">
-                        <span class="text-xl" aria-hidden="true">🪵</span>
+                        <i class="fa-solid fa-hammer text-xl" aria-hidden="true"></i>
                     </div>
                     <h3 class="font-heading mt-4 text-lg font-bold text-slate-900">Sampah Renovasi</h3>
                     <p class="mt-2 text-sm text-slate-600">Sisa bongkaran, puing, dan material renovasi.</p>
@@ -177,7 +177,7 @@
 
                 <div class="rounded-xl border border-green-200 bg-white p-6 shadow-sm transition hover:border-orange-500 hover:shadow-md">
                     <div class="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-green-50 text-green-700">
-                        <span class="text-xl" aria-hidden="true">🛋</span>
+                        <i class="fa-solid fa-couch text-xl" aria-hidden="true"></i>
                     </div>
                     <h3 class="font-heading mt-4 text-lg font-bold text-slate-900">Barang Bekas</h3>
                     <p class="mt-2 text-sm text-slate-600">Kasur, lemari, kursi, dan barang besar lainnya.</p>
@@ -185,7 +185,7 @@
 
                 <div class="rounded-xl border border-green-200 bg-white p-6 shadow-sm transition hover:border-orange-500 hover:shadow-md">
                     <div class="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-green-50 text-green-700">
-                        <span class="text-xl" aria-hidden="true">🏪</span>
+                        <i class="fa-solid fa-shop text-xl" aria-hidden="true"></i>
                     </div>
                     <h3 class="font-heading mt-4 text-lg font-bold text-slate-900">Sampah Usaha</h3>
                     <p class="mt-2 text-sm text-slate-600">Sampah toko, kantor, gudang, dan tempat usaha.</p>
@@ -352,14 +352,14 @@
         </div>
     </section>
 
-    <section class="border-t border-slate-200/70 bg-orange-500 py-16">
+    <section class="border-t border-slate-200/70 bg-white-500 py-16">
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div class="flex flex-col items-start justify-between gap-6 rounded-2xl bg-white/10 p-8 text-white md:flex-row md:items-center">
+            <div class="flex flex-col items-start justify-between gap-6 rounded-2xl bg-white/10 p-8 text-black-500 md:flex-row md:items-center">
                 <div>
                     <h2 class="font-heading text-3xl font-extrabold tracking-tight">
                         Sampah Banyak? Biar team Jogja Resik yang Angkut
                     </h2>
-                    <p class="mt-2 text-white/80">Klik WhatsApp, kirim foto, kami hitungkan estimasinya.</p>
+                    <p class="mt-2 text-black/80">Klik WhatsApp, kirim foto, kami hitungkan estimasinya.</p>
                 </div>
                 <a href="{{ $waLink }}" target="_blank" rel="noopener noreferrer"
                    class="inline-flex w-full items-center justify-center rounded-xl bg-white px-7 py-4 text-base font-extrabold text-green-700 shadow-sm hover:bg-green-50 transition md:w-auto">
