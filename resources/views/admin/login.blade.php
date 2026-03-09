@@ -18,12 +18,11 @@
     <style>
         body { 
             font-family: 'Poppins', sans-serif; 
-            background-color: #F4F7F6; /* Abu-abu sangat soft/bersih */
+            background-color: #F4F7F6;
             margin: 0;
             padding: 0;
         }
         
-        /* Container untuk mengunci layout agar selalu di tengah */
         .login-wrapper {
             display: flex;
             align-items: center;
@@ -32,18 +31,15 @@
             padding: 1rem;
         }
 
-        /* Desain Card Utama (Persis seperti gambar) */
         .login-card {
             width: 100%;
-            max-width: 420px; /* Mengunci lebar agar tidak melebar */
+            max-width: 420px;
             background-color: #FFFFFF;
             border-radius: 24px;
             padding: 2.5rem;
-            /* Bayangan super halus di sekitar kartu */
             box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.08);
         }
 
-        /* Desain bayangan menyala untuk tombol hijau */
         .btn-green-glow {
             background-color: #0FA958;
             box-shadow: 0 8px 20px -6px rgba(15, 169, 88, 0.6);
@@ -59,13 +55,13 @@
 <body>
 
     <div class="login-wrapper">
-        
         <div class="login-card">
             
             <div class="flex flex-col items-center mb-8 text-center">
-                <div class="w-14 h-14 bg-[#F0FDF4] rounded-2xl flex items-center justify-center mb-4 border border-green-100">
-                    <img src="{{ asset('images/logoclient.png') }}" alt="Logo" class="h-8 w-auto">
+                <div class="w-[56px] h-[56px] bg-[#EAFBF1] rounded-[14px] flex items-center justify-center mb-4 overflow-hidden">
+                    <img src="{{ asset('images/logoclient.png') }}" alt="Logo" class="w-full h-full object-contain p-1.5 scale-[1.15]">
                 </div>
+                
                 <h1 class="text-[22px] font-bold text-gray-900 mb-1">Masuk ke Dashboard</h1>
                 <p class="text-[13px] text-gray-500">Silakan masukkan email dan kata sandi Anda.</p>
             </div>
