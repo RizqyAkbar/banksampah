@@ -1058,7 +1058,7 @@
       </div>
     </div>
     <div class="hero-image">
-      <img src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=700&q=80" alt="Tim Jogja Resik">
+      <img src="{{asset ('images/ilustrasi.png')}}" alt="Tim Jogja Resik">
     </div>
   </div>
 </section>
@@ -1247,7 +1247,6 @@
   </a>
 </div>
 
-<<<<<<< HEAD
 <!-- ─── FOOTER ─── -->
 <footer>
   <div class="footer-inner">
@@ -1255,7 +1254,7 @@
       <div>
         <div class="footer-logo" style="display:flex;align-items:center;gap:10px;">
           <img src="{{ asset('images/logo1.png') }}" alt="Logo" style="height:32px;width:auto;">
-          Buang Sampah<span>Jogja</span>
+          Buang Sampah Jogja<span>Jogja</span>
         </div>
         <p class="footer-desc">Layanan pengangkutan sampah profesional yang berkomitmen menciptakan Yogyakarta yang lebih bersih dan nyaman untuk semua.</p>
       </div>
@@ -1274,211 +1273,11 @@
           <a href="#" class="social-btn"><i class="fa-brands fa-facebook-f"></i></a>
           <a href="#" class="social-btn"><i class="fa-brands fa-whatsapp"></i></a>
         </div>
-<<<<<<< HEAD
       </div>
     </div>
-    <div class="footer-bottom">&copy; 2026 Jogja Resik · All Rights Reserved</div>
+    <div class="footer-bottom">&copy; 2026 Buang Sampah Jogja · All Rights Reserved</div>
   </div>
 </footer>
-=======
-    </section>
-
-    <section id="cara-pesan" class="border-t border-slate-200/70 bg-white py-16">
-        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div class="mx-auto max-w-2xl text-center">
-                <h2 class="font-heading text-3xl font-extrabold tracking-tight text-slate-900">Cara Pesan</h2>
-                <p class="mt-3 text-slate-600">Cukup 4 langkah singkat. Mayoritas order selesai via WhatsApp.</p>
-            </div>
-
-            <div class="mt-12 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                <div class="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-                    @php
-                        $steps = [
-                            'Kirim foto sampah',
-                            'Dapat estimasi harga',
-                            'Tim datang',
-                            'Sampah diangkut',
-                        ];
-                    @endphp
-
-                    @foreach ($steps as $idx => $text)
-                        <div class="flex items-center gap-4">
-                            <div class="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-orange-500 text-sm font-extrabold text-white">
-                                {{ $idx + 1 }}
-                            </div>
-                            <div class="text-sm font-semibold text-slate-900">{{ $text }}</div>
-                        </div>
-
-                        @if ($idx !== count($steps) - 1)
-                            <div class="hidden md:block h-px flex-1 bg-slate-200"></div>
-                        @endif
-                    @endforeach
-                </div>
-            </div>
-
-            <div class="mt-8 text-center">
-                <a href="{{ $waLink }}" target="_blank" rel="noopener noreferrer"
-                   class="inline-flex items-center justify-center rounded-xl bg-orange-500 px-6 py-3 text-sm font-bold text-white shadow-sm hover:bg-orange-600 transition">
-                    <span class="mr-2" aria-hidden="true"></span> Mulai Pesan via WhatsApp
-                </a>
-            </div>
-        </div>
-    </section>
-
-    <section id="harga" class="border-t border-slate-200/70 bg-white py-16">
-        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div class="mx-auto max-w-2xl text-center">
-                <h2 class="font-heading text-3xl font-extrabold tracking-tight text-slate-900">Estimasi Harga</h2>
-                <p class="mt-3 text-slate-600">Harga mulai dari. Final menyesuaikan volume, akses lokasi, dan jenis sampah.</p>
-            </div>
-
-            <div class="mt-12 grid grid-cols-1 gap-6 md:grid-cols-2">
-                <div class="rounded-2xl border border-slate-200 bg-white p-7 shadow-sm">
-                    <div class="flex items-start justify-between gap-4">
-                        <div>
-                            <div class="text-xs font-semibold uppercase tracking-wide text-green-700">Paket</div>
-                            <h3 class="font-heading mt-2 text-xl font-extrabold text-slate-900">Pickup</h3>
-                            <p class="mt-2 text-sm text-slate-600">Cocok untuk volume kecil–menengah.</p>
-                        </div>
-                        <div class="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-green-50 text-green-700">
-                            <i class="fa-solid fa-truck-pickup" aria-hidden="true"></i>
-                        </div>
-                    </div>
-                    <div class="mt-6 flex items-end gap-2">
-                        <div class="text-3xl font-extrabold text-slate-900">Rp 250.000</div>
-                        <div class="text-sm text-slate-500">mulai</div>
-                    </div>
-                    <a href="{{ $waLink }}" target="_blank" rel="noopener noreferrer"
-                       class="mt-6 inline-flex w-full items-center justify-center rounded-xl bg-green-600 px-6 py-3 text-sm font-bold text-white hover:bg-green-700 transition">
-                        Tanya Estimasi
-                    </a>
-                </div>
-
-                <div class="relative rounded-2xl border-2 border-orange-500 bg-white p-7 shadow-sm">
-                    <div class="absolute -top-3 right-6 rounded-full bg-orange-500 px-3 py-1 text-xs font-extrabold text-white">
-                        Recommended
-                    </div>
-                    <div class="flex items-start justify-between gap-4">
-                        <div>
-                            <div class="text-xs font-semibold uppercase tracking-wide text-orange-600">Paket</div>
-                            <h3 class="font-heading mt-2 text-xl font-extrabold text-slate-900">Truk Dam</h3>
-                            <p class="mt-2 text-sm text-slate-600">Cocok untuk volume besar / proyek.</p>
-                        </div>
-                        <div class="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-orange-50 text-orange-600">
-                            <i class="fa-solid fa-truck" aria-hidden="true"></i>
-                        </div>
-                    </div>
-                    <div class="mt-6 flex items-end gap-2">
-                        <div class="text-3xl font-extrabold text-slate-900">Rp 350.000</div>
-                        <div class="text-sm text-slate-500">mulai</div>
-                    </div>
-                    <a href="{{ $waLink }}" target="_blank" rel="noopener noreferrer"
-                       class="mt-6 inline-flex w-full items-center justify-center rounded-xl bg-orange-500 px-6 py-3 text-sm font-bold text-white hover:bg-orange-600 transition">
-                        Pesan Truk Dam
-                    </a>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section id="testimoni" class="border-t border-slate-200/70 bg-white py-16">
-        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div class="mx-auto max-w-2xl text-center">
-                <h2 class="font-heading text-3xl font-extrabold tracking-tight text-slate-900">Testimoni</h2>
-                <p class="mt-3 text-slate-600">Beberapa review singkat dari pelanggan.</p>
-            </div>
-
-            <div class="mt-12 grid grid-cols-1 gap-6 md:grid-cols-2">
-                <div class="rounded-2xl border border-slate-200 bg-white p-7 shadow-sm">
-                    <div class="flex items-center gap-1 text-yellow-400" aria-label="Rating 5 bintang">
-                        @for ($i = 0; $i < 5; $i++)
-                            <i class="fa-solid fa-star" aria-hidden="true"></i>
-                        @endfor
-                    </div>
-                    <p class="mt-4 text-sm text-slate-700">
-                        “Timnya cepat dan bersih kerjanya.”
-                    </p>
-                    <div class="mt-4 text-xs font-semibold text-slate-500">— Pelanggan Jogja</div>
-                </div>
-
-                <div class="rounded-2xl border border-slate-200 bg-white p-7 shadow-sm">
-                    <div class="flex items-center gap-1 text-yellow-400" aria-label="Rating 5 bintang">
-                        @for ($i = 0; $i < 5; $i++)
-                            <i class="fa-solid fa-star" aria-hidden="true"></i>
-                        @endfor
-                    </div>
-                    <p class="mt-4 text-sm text-slate-700">
-                        “Harga murah dan respon cepat...”
-                    </p>
-                    <div class="mt-4 text-xs font-semibold text-slate-500">— Pelanggan Bantul</div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="border-t border-slate-200/70 bg-white-500 py-16">
-        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div class="flex flex-col items-start justify-between gap-6 rounded-2xl bg-white/10 p-8 text-black-500 md:flex-row md:items-center">
-                <div>
-                    <h2 class="font-heading text-3xl font-extrabold tracking-tight">
-                        Sampah Banyak? Biar team Jogja Resik yang Angkut
-                    </h2>
-                    <p class="mt-2 text-black/80">Klik WhatsApp, kirim foto, kami hitungkan estimasinya.</p>
-                </div>
-                <a href="{{ $waLink }}" target="_blank" rel="noopener noreferrer"
-                   class="inline-flex w-full items-center justify-center rounded-xl bg-white px-7 py-4 text-base font-extrabold text-green-700 shadow-sm hover:bg-green-50 transition md:w-auto">
-                    WhatsApp Sekarang
-                </a>
-            </div>
-        </div>
-    </section>
-
-    <section id="kontak" class="bg-green-900 py-14 text-white">
-        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div class="grid grid-cols-1 gap-10 md:grid-cols-3">
-                <div class="md:col-span-1">
-                    <div class="flex items-center gap-3">
-                        <img src="{{ asset('images/logoclient.png') }}" alt="Logo Jogja Resik" class="h-10 w-auto object-contain">
-                        <div class="font-heading text-xl font-extrabold">Jogja Resik</div>
-                    </div>
-                    <p class="mt-4 text-sm text-white/70">
-                        Jasa angkut sampah untuk rumah, kos, renovasi, dan usaha. Cepat, rapi, dan transparan.
-                    </p>
-                </div>
-
-                <div class="md:col-span-1">
-                    <div class="text-sm font-bold text-white/90">Area layanan</div>
-                    <ul class="mt-3 space-y-2 text-sm text-white/70">
-                        <li>Jogja</li>
-                        <li>Bantul</li>
-                        <li>Sleman</li>
-                    </ul>
-                </div>
-
-                <div class="md:col-span-1">
-                    <div class="text-sm font-bold text-white/90">Hubungi</div>
-                    <div class="mt-4 flex flex-col gap-3">
-                        <a href="{{ $waLink }}" target="_blank" rel="noopener noreferrer"
-                           class="inline-flex items-center gap-3 rounded-xl bg-white/10 px-4 py-3 text-sm font-semibold text-white hover:bg-white/15 transition">
-                            <i class="fa-brands fa-whatsapp text-lg text-emerald-300" aria-hidden="true"></i>
-                            WhatsApp
-                        </a>
-                        <a href="https://instagram.com/{{ $igHandle }}" target="_blank" rel="noopener noreferrer"
-                           class="inline-flex items-center gap-3 rounded-xl bg-white/10 px-4 py-3 text-sm font-semibold text-white hover:bg-white/15 transition">
-                            <i class="fa-brands fa-instagram text-lg text-pink-300" aria-hidden="true"></i>
-                            Instagram
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <div class="mt-10 border-t border-white/10 pt-8 text-xs text-white/60">
-                &copy; {{ date('Y') }} Jogja Resik. All rights reserved.
-            </div>
-        </div>
-    </section>
-</main>
->>>>>>> e47207fdfb492a6d95975db04954511563437b8d
 
 <script>
   /* ════════════════════════════════
