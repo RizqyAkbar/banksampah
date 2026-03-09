@@ -372,9 +372,7 @@
             <div class="grid grid-cols-1 gap-10 md:grid-cols-3">
                 <div class="md:col-span-1">
                     <div class="flex items-center gap-3">
-                        <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-green-600 text-white">
-                            <i class="fa-solid fa-leaf" aria-hidden="true"></i>
-                        </span>
+                        <img src="{{ asset('images/logoclient.png') }}" alt="Logo Jogja Resik" class="h-10 w-auto object-contain">
                         <div class="font-heading text-xl font-extrabold">Jogja Resik</div>
                     </div>
                     <p class="mt-4 text-sm text-white/70">
