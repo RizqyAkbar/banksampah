@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Login - Jogja Resik</title>
     
-    <link rel="icon" href="{{ asset('images/logoclient.png') }}" type="image/png">
+    <link rel="icon" href="{{ asset('images/logo1.png') }}" type="image/png">
     
     @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
         @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -59,7 +59,7 @@
             
             <div class="flex flex-col items-center mb-8 text-center">
                 <div class="w-[56px] h-[56px] bg-[#EAFBF1] rounded-[14px] flex items-center justify-center mb-4 overflow-hidden">
-                    <img src="{{ asset('images/logoclient.png') }}" alt="Logo" class="w-full h-full object-contain p-1.5 scale-[1.15]">
+                    <img src="{{ asset('images/logo1.png') }}" alt="Logo" class="w-full h-full object-contain p-1.5 scale-[1.15]">
                 </div>
                 
                 <h1 class="text-[22px] font-bold text-gray-900 mb-1">Masuk ke Dashboard</h1>
@@ -92,6 +92,26 @@
                     Masuk
                 </button>
             </form>
+
+            <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+                @if(session('success'))
+                    <script>
+                        document.addEventListener('DOMContentLoaded', function() {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Berhasil Keluar!',
+                                text: '{{ session('success') }}',
+                                timer: 3000, // Alert akan hilang otomatis dalam 3 detik
+                                showConfirmButton: false,
+                                toast: true, // Ubah jadi false jika ingin alert besar di tengah layar
+                                position: 'top-end' // Posisi di pojok kanan atas
+                            });
+                        });
+                    </script>
+                @endif
+            </body>
+            </html>
 
         </div>
     </div>
