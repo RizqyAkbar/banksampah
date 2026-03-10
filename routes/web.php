@@ -32,5 +32,8 @@ Route::prefix('admin')->group(function () {
     Route::get('/create-invoice', [OrderController::class, 'invoiceIndex'])->name('admin.invoice_index');
     Route::get('/order-detail/{id}', [OrderController::class, 'getDetail'])->name('admin.order.detail');
     Route::get('/invoice/print/{id}', [OrderController::class, 'printInvoice'])->name('admin.invoice.print');
+    
+    Route::get('/payment', [OrderController::class, 'paymentIndex'])->name('admin.payment_index');
+    Route::put('/payment/{id}', [OrderController::class, 'paymentUpdate'])->name('admin.payment_update');
 });
 

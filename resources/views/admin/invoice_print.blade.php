@@ -17,7 +17,7 @@
 <body class="bg-white p-10">
     <div class="flex justify-between items-start border-b-2 border-slate-100 pb-8 mb-8">
         <div class="flex items-center gap-4">
-            <img src="{{ asset('images/logoclient.png') }}" alt="Logo" class="h-16 w-auto">
+            <img src="{{ asset('images/logo1.png') }}" alt="Logo" class="h-16 w-auto">
             <div>
                 <h1 class="text-3xl font-bold text-slate-900 uppercase tracking-tighter">Juragan<span class="text-green-600">Urug</span></h1>
                 <p class="text-xs text-slate-500 font-medium">Jasa Buang Puing & Pengurukan Tanah</p>

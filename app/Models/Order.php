@@ -24,5 +24,10 @@ class Order extends Model
         'hpp_per_rit',
         'jumlah_pendapatan',
         'jumlah_keuntungan',
+
+        // TAMBAHKAN 3 BARIS INI:
+        'status_pembayaran',
+        'metode_pembayaran',
+        'tanggal_pelunasan',
     ];
 }

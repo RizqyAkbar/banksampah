@@ -126,4 +126,34 @@ class OrderController extends Controller
         $order = Order::findOrFail($id);
         return view('admin.invoice_print', compact('order'));
     }
+
+    // Tampil Daftar Payment
+    public function paymentIndex()
+    {
+        // Mengambil order yang sudah ada harganya (siap bayar)
+        $orders = Order::where('jumlah_pendapatan', '>', 0)->orderBy('created_at', 'desc')->get();
+        return view('admin.payment_index', compact('orders'));
+    }
+
+    public function paymentUpdate(Request $request, $id)
+    {
+        $order = Order::findOrFail($id);
+    
+        // Validasi data
+        $request->validate([
+            'status_pembayaran' => 'required',
+            'metode_pembayaran' => 'nullable',
+            'tanggal_pelunasan' => 'nullable|date',
+        ]);
+    
+        // Update data ke database
+        $order->update([
+            'status_pembayaran' => $request->status_pembayaran,
+            'metode_pembayaran' => $request->metode_pembayaran,
+            'tanggal_pelunasan' => $request->tanggal_pelunasan,
+        ]);
+    
+        // Redirect kembali agar halaman refresh dan data berubah
+        return redirect()->route('admin.payment_index')->with('success', 'Status pembayaran ' . $order->nama_pelanggan . ' berhasil diupdate!');
+    }
 }
