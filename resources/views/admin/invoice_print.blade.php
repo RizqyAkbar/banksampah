@@ -25,8 +25,11 @@
         </div>
         <div class="text-right">
             <h2 class="text-xl font-bold text-slate-800">INVOICE</h2>
-            <p class="text-sm text-slate-500">{{ 'INV-' . date('Ymd') . '-' . str_pad($order->id, 3, '0', STR_PAD_LEFT) }}</p>
-            <p class="text-sm text-slate-500 mt-1">{{ date('d F Y') }}</p>
+            {{-- Logika: Pakai no_invoice dari DB, kalau kosong baru generate otomatis --}}
+            <p class="text-sm text-slate-500">
+                {{ $order->no_invoice ?? 'INV-' . $order->created_at->format('Ymd') . '-' . str_pad($order->id, 3, '0', STR_PAD_LEFT) }}
+            </p>
+            <p class="text-sm text-slate-500 mt-1">{{ $order->created_at->format('d F Y') }}</p>
         </div>
     </div>
 

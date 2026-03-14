@@ -6,6 +6,7 @@
 @section('content')
     <h1 class="font-heading text-2xl font-bold text-slate-900 mb-6 sm:hidden">Dashboard</h1>
 
+    {{-- TOP STATS (5 KOTAK) --}}
     <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 mb-8">
         
         <div class="rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-md transition-shadow">
@@ -73,7 +74,84 @@
             </div>
         </div>
 
-    </div> <div class="rounded-2xl border border-slate-100 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+    </div> 
+    
+    {{-- BAGIAN BARU: LAPORAN POPULASI LAYANAN (FULL WIDTH) --}}
+    <div class="rounded-2xl border border-slate-100 bg-white p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-6">
+        <div class="flex items-center justify-between mb-6 border-b border-slate-50 pb-4">
+            <div class="flex items-center gap-3">
+                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50 text-orange-600">
+                    {{-- IKON BARU --}}
+                    <i class="fa-solid fa-chart-pie text-lg"></i> 
+                </div>
+                <h3 class="text-lg font-bold text-slate-900 font-heading">Populasi Layanan</h3>
+            </div>
+            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2 py-1 bg-slate-50 rounded-md border border-slate-100">Global</span>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-8">
+            @forelse($statistikLayanan as $layanan)
+            <div class="group">
+                <div class="flex justify-between items-end mb-2">
+                    {{-- Tambahkan truncate agar jika admin input layanan kustom yang panjang tidak berantakan --}}
+                    <span class="text-sm font-bold text-slate-700 group-hover:text-orange-600 transition-colors truncate max-w-[150px]" title="{{ $layanan->jenis_layanan }}">
+                        {{ $layanan->jenis_layanan }}
+                    </span>
+                    <div class="text-right shrink-0">
+                        <span class="text-lg font-black text-slate-900">{{ $layanan->total }}</span>
+                        <span class="text-[10px] text-slate-400 font-bold uppercase ml-1">Order</span>
+                    </div>
+                </div>
+                {{-- Progress Bar --}}
+                <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden shadow-inner">
+                    @php 
+                        $maxLayanan = $statistikLayanan->max('total') ?: 1;
+                        $persenLayanan = ($layanan->total / $maxLayanan) * 100;
+                    @endphp
+                    <div class="bg-gradient-to-r from-orange-400 to-orange-500 h-full rounded-full transition-all duration-1000 group-hover:brightness-110" style="width: {{ $persenLayanan }}%"></div>
+                </div>
+            </div>
+            @empty
+            <div class="col-span-full text-center py-6">
+                <p class="text-xs text-slate-400 italic">Belum ada data layanan yang tercatat.</p>
+            </div>
+            @endforelse
+        </div>
+    </div>
+
+    {{-- BAGIAN BARU: LAPORAN DISTRIBUSI ARMADA (FULL WIDTH) --}}
+    <div class="rounded-2xl border border-slate-100 bg-white p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-8">
+        <div class="flex items-center justify-between mb-6 border-b border-slate-50 pb-4">
+            <div class="flex items-center gap-3">
+                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                    <i class="fa-solid fa-truck-moving text-lg"></i>
+                </div>
+                <h3 class="text-lg font-bold text-slate-900 font-heading">Distribusi Armada</h3>
+            </div>
+            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2 py-1 bg-slate-50 rounded-md border border-slate-100">Global</span>
+        </div>
+        
+        {{-- Menggunakan Grid 2 sampai 6 Kolom agar kotak menyesuaikan ke samping --}}
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            @forelse($statistikArmada as $armada)
+            <div class="p-5 rounded-2xl bg-slate-50 border border-slate-100 hover:border-blue-300 hover:bg-white hover:shadow-md transition-all group">
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest group-hover:text-blue-500 transition-colors">{{ $armada->armada }}</p>
+                <div class="flex items-baseline gap-1 mt-2">
+                    <span class="text-3xl font-black text-slate-800 tracking-tight">{{ $armada->total }}</span>
+                    <span class="text-xs font-bold text-slate-400 uppercase">Kali</span>
+                </div>
+                <div class="mt-3 w-8 h-1 bg-blue-500 rounded-full opacity-20 group-hover:w-full group-hover:opacity-100 transition-all duration-500"></div>
+            </div>
+            @empty
+            <div class="col-span-full text-center py-6">
+                <p class="text-xs text-slate-400 italic">Belum ada data armada yang tercatat.</p>
+            </div>
+            @endforelse
+        </div>
+    </div>
+
+    {{-- TABEL JADWAL HARI INI --}}
+    <div class="rounded-2xl border border-slate-100 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
         <div class="flex items-center justify-between border-b border-slate-100 p-6">
             <div class="flex items-center gap-3">
                 <div class="relative flex h-3 w-3">

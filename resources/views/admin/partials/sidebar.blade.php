@@ -25,6 +25,10 @@
         <i class="fa-solid fa-list-ul w-5 text-center text-lg {{ request()->routeIs('admin.rekap_order') ? '' : 'text-slate-400' }}"></i> Rekap Order
     </a>
 
+    <a href="{{ route('admin.rekap_cancel') }}" class="flex items-center gap-3 rounded-xl {{ request()->routeIs('admin.rekap_cancel') ? 'bg-green-50 text-green-700' : 'text-slate-600 hover:bg-slate-50' }} px-4 py-3.5 text-sm transition-colors">
+        <i class="fa-solid fa-rectangle-xmark w-5 text-center text-lg"></i> Monitoring Cancel
+    </a>
+
     <p class="px-4 pb-2 pt-6 text-xs font-bold uppercase tracking-wider text-slate-400">Keuangan</p>
 
     <a href="{{ route('admin.invoice_index') }}" class="flex items-center gap-3 rounded-xl {{ request()->routeIs('admin.invoice_index') ? 'bg-green-50 text-green-700 font-semibold' : 'text-slate-600 hover:bg-slate-50 font-medium' }} px-4 py-3.5 text-sm transition-colors">
@@ -33,6 +37,13 @@
 
     <a href="{{ route('admin.payment_index') }}" class="flex items-center gap-3 rounded-xl {{ request()->routeIs('admin.payment_index') ? 'bg-green-50 text-green-700 font-semibold' : 'text-slate-600 hover:bg-slate-50 font-medium' }} px-4 py-3.5 text-sm transition-colors">
         <i class="fa-solid fa-wallet w-5 text-center text-lg {{ request()->routeIs('admin.payment_index') ? '' : 'text-slate-400' }}"></i> Payment
+    </a>
+
+    <a href="{{ route('admin.pengeluaran') }}" class="flex items-center gap-3 rounded-xl {{ request()->routeIs('admin.pengeluaran*') ? 'bg-green-50 text-green-700 font-semibold' : 'text-slate-600 hover:bg-slate-50 font-medium' }} px-4 py-3.5 text-sm transition-colors">
+        <i class="fa-solid fa-money-bill-transfer w-5 text-center text-lg {{ request()->routeIs('admin.pengeluaran*') ? '' : 'text-slate-400' }}"></i> Pengeluaran
+    </a>
+    <a href="{{ route('admin.laporan') }}" class="flex items-center gap-3 rounded-xl {{ request()->routeIs('admin.laporan') ? 'bg-green-50 text-green-700 font-semibold' : 'text-slate-600 hover:bg-slate-50 font-medium' }} px-4 py-3.5 text-sm transition-colors">
+        <i class="fa-solid fa-file-lines w-5 text-center text-lg {{ request()->routeIs('admin.laporan') ? '' : 'text-slate-400' }}"></i> Laporan Lengkap
     </a>
 </nav>
 

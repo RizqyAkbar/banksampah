@@ -6,11 +6,18 @@
 @section('content')
     <h1 class="font-heading text-2xl font-bold text-slate-900 mb-6 sm:hidden">Pembayaran</h1>
 
-    <div class="rounded-2xl border border-slate-100 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden" x-data="{ isModalOpen: false, selectedOrder: {} }">
+    <div class="rounded-2xl border border-slate-100 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden" x-data="{ isModalOpen: false, selectedOrder: { catatan_pembayaran: '' } }">
         <div class="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
             <div>
                 <h2 class="text-lg font-bold text-slate-900">Riwayat & Status Bayar</h2>
                 <p class="text-xs text-slate-500 mt-1">Pantau pelunasan tagihan pelanggan secara realtime.</p>
+            </div>
+
+            {{-- TOMBOL FILTER KHUSUS --}}
+            <div class="flex gap-2">
+                <a href="{{ route('admin.payment_index') }}" class="px-4 py-2 text-xs font-bold rounded-xl border {{ !request('filter') ? 'bg-slate-900 text-white' : 'bg-white text-slate-600' }}">Semua</a>
+                <a href="{{ route('admin.payment_index', ['filter' => 'lunas']) }}" class="px-4 py-2 text-xs font-bold rounded-xl border {{ request('filter') == 'lunas' ? 'bg-emerald-600 text-white' : 'bg-white text-emerald-600 border-emerald-100' }}">Sudah Lunas</a>
+                <a href="{{ route('admin.payment_index', ['filter' => 'belum_lunas']) }}" class="px-4 py-2 text-xs font-bold rounded-xl border {{ request('filter') == 'belum_lunas' ? 'bg-rose-600 text-white' : 'bg-white text-rose-600 border-rose-100' }}">Belum Lunas</a>
             </div>
         </div>
 
@@ -21,8 +28,10 @@
                         <th class="px-6 py-4 font-semibold text-center w-16">No</th>
                         <th class="px-6 py-4 font-semibold">Pelanggan</th>
                         <th class="px-6 py-4 font-semibold text-center">Status</th>
-                        <th class="px-6 py-4 font-semibold">Metode</th>
                         <th class="px-6 py-4 font-semibold">Total Tagihan</th>
+                        <th class="px-6 py-4 font-semibold text-emerald-600">Sudah Bayar</th>
+                        <th class="px-6 py-4 font-semibold text-rose-600">Sisa Hutang</th>
+                        <th class="px-6 py-4 font-semibold">Metode & Tgl Pelunasan</th>
                         <th class="px-6 py-4 font-semibold text-right">Aksi</th>
                     </tr>
                 </thead>
@@ -32,31 +41,65 @@
                         <td class="px-6 py-4 text-center font-bold text-slate-400">{{ $loop->iteration }}</td>
                         <td class="px-6 py-4">
                             <p class="font-bold text-slate-900">{{ $item->nama_pelanggan }}</p>
-                            <p class="text-[10px] text-slate-400 italic">Lunas: {{ $item->tanggal_pelunasan ? \Carbon\Carbon::parse($item->tanggal_pelunasan)->format('d M Y') : '-' }}</p>
                         </td>
                         <td class="px-6 py-4 text-center">
-                            <span class="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider {{ $item->status_pembayaran == 'Lunas' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-rose-50 text-rose-600 border border-rose-100' }}">
+                            {{-- Badge Status --}}
+                            @php
+                                $color = 'bg-rose-50 text-rose-600 border-rose-100';
+                                if($item->status_pembayaran == 'Lunas') $color = 'bg-emerald-50 text-emerald-600 border-emerald-100';
+                                if($item->status_pembayaran == 'Cicil') $color = 'bg-amber-50 text-amber-600 border-amber-100';
+                            @endphp
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider {{ $color }} border">
                                 <i class="fa-solid {{ $item->status_pembayaran == 'Lunas' ? 'fa-check-double' : 'fa-clock' }} mr-1.5"></i>
                                 {{ $item->status_pembayaran }}
                             </span>
                         </td>
-                        <td class="px-6 py-4 font-medium text-slate-500">
-                            <span class="flex items-center gap-2">
-                                <i class="fa-solid fa-credit-card opacity-30"></i>
-                                {{ $item->metode_pembayaran ?? 'N/A' }}
-                            </span>
-                        </td>
+                        <td class="px-6 py-4 font-bold text-slate-900">Rp {{ number_format($item->jumlah_pendapatan, 0, ',', '.') }}</td>
+                        <td class="px-6 py-4 font-bold text-emerald-600">Rp {{ number_format($item->jumlah_dibayar, 0, ',', '.') }}</td>
+                        <td class="px-6 py-4 font-bold text-rose-600">Rp {{ number_format($item->jumlah_pendapatan - $item->jumlah_dibayar, 0, ',', '.') }}</td>
+                        
+                        {{-- ISI KOLOM BARU: METODE & TANGGAL --}}
                         <td class="px-6 py-4">
-                            <span class="font-bold text-slate-900 text-base">Rp {{ number_format($item->jumlah_pendapatan, 0, ',', '.') }}</span>
+                            <div class="flex flex-col gap-1">
+                                {{-- Baris 1: Metode Pembayaran --}}
+                                <span class="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-credit-card text-slate-400"></i>
+                                    {{ $item->metode_pembayaran ?? 'N/A' }}
+                                </span>
+                                
+                                {{-- Baris 2: Catatan/Referensi (Hanya muncul jika ada isinya) --}}
+                                @if($item->catatan_pembayaran)
+                                    <div class="group relative w-fit">
+                                        <span class="text-[10px] text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded border border-blue-100 flex items-center gap-1 cursor-help" title="{{ $item->catatan_pembayaran }}">
+                                            <i class="fa-solid fa-file-invoice text-[9px]"></i>
+                                            {{ Str::limit($item->catatan_pembayaran, 15) }} {{-- Membatasi teks agar tabel tidak melar --}}
+                                        </span>
+                                    </div>
+                                @endif
+
+                                {{-- Baris 3: Tanggal Pelunasan --}}
+                                @if($item->tanggal_pelunasan)
+                                    <span class="text-[10px] text-slate-400 flex items-center gap-1.5">
+                                        <i class="fa-solid fa-calendar-check text-slate-300"></i>
+                                        {{ \Carbon\Carbon::parse($item->tanggal_pelunasan)->format('d M Y') }}
+                                    </span>
+                                @else
+                                    <span class="text-[10px] text-rose-400 italic flex items-center gap-1.5">
+                                        <i class="fa-solid fa-hourglass-start text-[9px]"></i>
+                                        Belum Lunas
+                                    </span>
+                                @endif
+                            </div>
                         </td>
+
                         <td class="px-6 py-4 text-right">
                             <button @click="isModalOpen = true; selectedOrder = {{ json_encode($item) }}" class="inline-flex items-center justify-center rounded-lg bg-green-50 text-green-700 px-3 py-1.5 text-xs font-bold hover:bg-green-600 hover:text-white transition-colors">
-                                <i class="fa-solid fa-pen-to-square mr-2"></i> Update Status
+                                <i class="fa-solid fa-wallet mr-2"></i> Update Bayar
                             </button>
                         </td>
                     </tr>
                     @empty
-                    <tr><td colspan="6" class="px-6 py-12 text-center text-slate-400 italic">Belum ada data pembayaran yang masuk.</td></tr>
+                    <tr><td colspan="8" class="px-6 py-12 text-center text-slate-400 italic">Belum ada data pembayaran yang masuk.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -78,15 +121,25 @@
 
                     <form :action="'/admin/payment/' + selectedOrder.id" method="POST" class="space-y-5">
                         @csrf @method('PUT')
-                    
-                        <div>
-                            <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Status Pembayaran</label>
-                            <select name="status_pembayaran" x-model="selectedOrder.status_pembayaran" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm font-semibold focus:ring-2 focus:ring-green-500 transition-all outline-none">
-                                <option value="Belum Lunas">Belum Lunas</option>
-                                <option value="Lunas">Lunas (Selesai)</option>
-                            </select>
+
+                        {{-- Info Tagihan (Read Only) --}}
+                        <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Total Tagihan</p>
+                            <p class="text-lg font-bold text-slate-900" x-text="'Rp ' + Number(selectedOrder.jumlah_pendapatan).toLocaleString('id-ID')"></p>
                         </div>
 
+                        {{-- Input Jumlah Bayar --}}
+                        <div>
+                            <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Jumlah Yang Dibayar (Rp)</label>
+                            <input type="number" 
+                                name="jumlah_dibayar" 
+                                x-model="selectedOrder.jumlah_dibayar" 
+                                class="w-full bg-slate-50 border-2 border-emerald-100 rounded-2xl p-4 text-lg font-bold text-emerald-700 focus:ring-2 focus:ring-green-500 transition-all outline-none"
+                                placeholder="Contoh: 500000">
+                            <p class="text-[10px] text-slate-400 mt-2 ml-1 italic">*Jika diisi full sesuai tagihan, status otomatis <b>Lunas</b>. Jika kurang, status jadi <b>Cicil</b>.</p>
+                        </div>
+
+                        {{-- Metode Pembayaran --}}
                         <div>
                             <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Metode Pembayaran</label>
                             <select name="metode_pembayaran" x-model="selectedOrder.metode_pembayaran" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm font-semibold focus:ring-2 focus:ring-green-500 transition-all outline-none">
@@ -99,21 +152,35 @@
                             </select>
                         </div>
 
-                        <div>
-                            <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Tanggal Pelunasan</label>
-                            <input type="date" name="tanggal_pelunasan" x-model="selectedOrder.tanggal_pelunasan" class="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm font-semibold focus:ring-2 focus:ring-green-500 transition-all outline-none">
-                            <p class="text-[10px] text-slate-400 mt-2 ml-1 italic">*Kosongkan jika belum lunas</p>
+                        <div class="mt-4">
+                            <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">No. Invoice / Referensi Transfer</label>
+                            <textarea name="catatan_pembayaran" 
+                                    x-model="selectedOrder.catatan_pembayaran" 
+                                    rows="2" 
+                                    class="w-full bg-slate-50 border-none rounded-2xl p-4 text-sm font-semibold focus:ring-2 focus:ring-green-500 transition-all outline-none"
+                                    placeholder="Contoh: INV-2024001 / Ref: 99283129"></textarea>
+                            <p class="text-[10px] text-slate-400 mt-2 italic">*Gunakan untuk mencatat kode unik pada bukti transfer bank.</p>
+                        </div>
+
+                        {{-- Sisa Hutang Realtime (Informasi saja) --}}
+                        <div class="flex justify-between items-center px-2">
+                            <span class="text-xs font-bold text-slate-400">SISA HUTANG:</span>
+                            <span class="text-sm font-bold text-rose-500" x-text="'Rp ' + Number(selectedOrder.jumlah_pendapatan - selectedOrder.jumlah_dibayar).toLocaleString('id-ID')"></span>
                         </div>
 
                         <div class="flex gap-4 pt-4">
                             <button type="button" @click="isModalOpen = false" class="flex-1 px-4 py-4 rounded-2xl text-sm font-bold text-slate-400 hover:bg-slate-200 transition-colors">Batal</button>
-                            <button type="submit" class="flex-[1.5] px-4 py-4 bg-green-600 text-white rounded-2xl text-sm font-bold shadow-[0_10px_20px_rgba(22,163,74,0.2)] hover:bg-green-700 transition-all active:scale-95">
-                                Simpan Perubahan
+                            <button type="submit" class="flex-[1.5] px-4 py-4 bg-emerald-600 text-white rounded-2xl text-sm font-bold shadow-lg hover:bg-emerald-700 transition-all">
+                                Simpan Pembayaran
                             </button>
                         </div>
                     </form>
                 </div>
             </div>
+        </div>
+        {{-- Pagination --}}
+        <div class="p-6 border-t border-slate-100 bg-slate-50/30">
+            {{ $orders->links() }}
         </div>
     </div>
 @endsection

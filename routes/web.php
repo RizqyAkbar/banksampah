@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\AdminAuthController; 
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\OrderController;
+use App\Http\Controllers\Admin\PengeluaranController;
 
 Route::get('/', function () {
     return view('landing_page');
@@ -46,5 +47,20 @@ Route::prefix('admin')->group(function () {
         // PAYMENT
         Route::get('/payment', [OrderController::class, 'paymentIndex'])->name('admin.payment_index');
         Route::put('/payment/{id}', [OrderController::class, 'paymentUpdate'])->name('admin.payment_update');
+
+        // PENGELUARAN
+        Route::get('/pengeluaran', [PengeluaranController::class, 'index'])->name('admin.pengeluaran');
+        Route::get('/pengeluaran/tambah', [PengeluaranController::class, 'create'])->name('admin.pengeluaran.create');
+        Route::post('/pengeluaran/simpan', [PengeluaranController::class, 'store'])->name('admin.pengeluaran.store');
+        Route::get('/pengeluaran/{id}/edit', [PengeluaranController::class, 'edit'])->name('admin.pengeluaran.edit');
+        Route::put('/pengeluaran/{id}', [PengeluaranController::class, 'update'])->name('admin.pengeluaran.update');
+        Route::delete('/pengeluaran/{id}', [PengeluaranController::class, 'destroy'])->name('admin.pengeluaran.destroy');
+
+        // Monitoring Cancel
+        Route::get('/rekap-cancel', [OrderController::class, 'indexCancel'])->name('admin.rekap_cancel');
+        Route::put('/order/{id}/cancel', [OrderController::class, 'cancel'])->name('admin.order.cancel');
+        Route::put('/order/{id}/restore', [OrderController::class, 'restore'])->name('admin.order.restore');
+
+        Route::get('/laporan', [OrderController::class, 'laporan'])->name('admin.laporan');
     });
 });

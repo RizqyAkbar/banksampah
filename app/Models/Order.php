@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+
 class Order extends Model
 {
     use HasFactory;
@@ -29,5 +30,22 @@ class Order extends Model
         'status_pembayaran',
         'metode_pembayaran',
         'tanggal_pelunasan',
+        'jumlah_dibayar',
+        'catatan_pembayaran',
+        'no_invoice',
+
+        'status_order',
+        'alasan_cancel',
+
+        'link_maps', 
+        'nama_sopir', 
+        'no_wa_sopir', 
+        'plat_armada',
     ];
+
+    // Tambahkan ini di dalam class Order
+    public function logs()
+    {
+        return $this->hasMany(OrderLog::class)->orderBy('created_at', 'desc');
+    }
 }

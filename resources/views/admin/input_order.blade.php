@@ -22,6 +22,10 @@
             background-color: #ffffff;
             box-shadow: 0 0 0 4px rgba(0, 194, 100, 0.1);
         }
+        .rounded-l-none {
+            border-top-left-radius: 0 !important;
+            border-bottom-left-radius: 0 !important;
+        }
     </style>
 @endsection
 
@@ -37,7 +41,7 @@
                 </div>
                 <div>
                     <h2 class="text-lg font-bold text-slate-900">Detail Pemesanan</h2>
-                    <p class="text-sm text-slate-500">Masukkan informasi pelanggan dan detail layanan dengan lengkap.</p>
+                    <p class="text-sm text-slate-500">Masukkan informasi pelanggan dan detail lokasi dengan lengkap.</p>
                 </div>
             </div>
 
@@ -52,13 +56,27 @@
 
                     <div class="md:col-span-1">
                         <label for="no_wa" class="mb-2 block text-sm font-semibold text-slate-700">No. WhatsApp <span class="text-red-500">*</span></label>
-                        <input type="tel" id="no_wa" name="no_wa" placeholder="Ex: 081234567890" class="form-input" required>
-                        <p class="mt-1.5 text-xs text-slate-400"><i class="fa-solid fa-circle-info mr-1"></i>Jika nomor sama, sistem akan menggabungkan ke 1 rekapan otomatis.</p>
+                        <div class="relative flex">
+                            <span class="inline-flex items-center px-4 rounded-l-xl border border-r-0 border-slate-200 bg-slate-100 text-slate-500 font-bold text-sm">
+                                +62
+                            </span>
+                            <input type="tel" id="no_wa" name="no_wa" placeholder="81234567890" class="form-input rounded-l-none" oninput="formatPhoneNumber(this)" required>
+                        </div>
                     </div>
 
                     <div class="md:col-span-2">
                         <label for="alamat" class="mb-2 block text-sm font-semibold text-slate-700">Alamat Lengkap <span class="text-red-500">*</span></label>
                         <textarea id="alamat" name="alamat" rows="3" placeholder="Masukkan alamat lengkap lokasi..." class="form-input" required></textarea>
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <label for="link_maps" class="mb-2 block text-sm font-semibold text-slate-700">Link Google Maps (Sharelok) <span class="text-slate-400 font-normal ml-1">(Opsional)</span></label>
+                        <div class="relative flex">
+                            <span class="inline-flex items-center px-4 rounded-l-xl border border-r-0 border-slate-200 bg-slate-50 text-slate-400">
+                                <i class="fa-solid fa-location-dot"></i>
+                            </span>
+                            <input type="url" id="link_maps" name="link_maps" placeholder="Paste link maps di sini..." class="form-input rounded-l-none">
+                        </div>
                     </div>
 
                     <div class="md:col-span-2 py-2">
@@ -71,44 +89,8 @@
                     </div>
 
                     <div class="md:col-span-1">
-                        <label for="jenis_layanan" class="mb-2 block text-sm font-semibold text-slate-700">Jenis Layanan <span class="text-red-500">*</span></label>
-                        <div class="relative mb-2">
-                            <select id="jenis_layanan" name="jenis_layanan" class="form-input appearance-none pr-10" required onchange="toggleCustomLayanan(this)">
-                                <option value="" disabled selected hidden>Pilih Jenis Layanan</option>
-                                <option value="Buang Puing">Buang Puing</option>
-                                <option value="Buang Sampah">Buang Sampah</option>
-                                <option value="Urug Puing">Urug Puing</option>
-                                <option value="Urug Tanah">Urug Tanah</option>
-                                <option value="Material">Kirim Material</option>
-                                <option value="Lainnya">Lainnya... (Tulis Sendiri)</option>
-                            </select>
-                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500">
-                                <i class="fa-solid fa-chevron-down text-sm"></i>
-                            </div>
-                        </div>
-                        
-                        <div id="input_layanan_custom_container" class="hidden">
-                            <input type="text" id="jenis_layanan_custom" name="jenis_layanan_custom" placeholder="Ketik layanan kustom di sini..." class="form-input border-dashed border-slate-300 focus:border-green-500">
-                        </div>
-                    </div>
-
-                    <div class="md:col-span-1">
-                        <label for="armada" class="mb-2 block text-sm font-semibold text-slate-700">Armada <span class="text-red-500">*</span></label>
-                        <div class="relative">
-                            <select id="armada" name="armada" class="form-input appearance-none pr-10" required>
-                                <option value="" disabled selected hidden>Pilih Armada</option>
-                                <option value="Pickup">Unit Pickup</option>
-                                <option value="Truk Dump">Truk Dump</option>
-                            </select>
-                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500">
-                                <i class="fa-solid fa-chevron-down text-sm"></i>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="md:col-span-2">
                         <label for="catatan" class="mb-2 block text-sm font-semibold text-slate-700">Catatan Khusus <span class="text-slate-400 font-normal ml-1">(Opsional)</span></label>
-                        <textarea id="catatan" name="catatan" rows="2" placeholder="Ex: Request diambil sebelum jam 3 sore..." class="form-input"></textarea>
+                        <textarea id="catatan" name="catatan" rows="3" placeholder="Ex: Request diambil sebelum jam 3 sore..." class="form-input"></textarea>
                     </div>
 
                 </div>
@@ -128,37 +110,18 @@
 
 @section('extra_js')
     <script>
-        // Logika input kustom untuk "Lainnya"
-        function toggleCustomLayanan(selectElement) {
-            const customContainer = document.getElementById('input_layanan_custom_container');
-            const customInput = document.getElementById('jenis_layanan_custom');
-            
-            if (selectElement.value === 'Lainnya') {
-                customContainer.classList.remove('hidden');
-                customInput.setAttribute('required', 'required');
-                customInput.focus();
-            } else {
-                customContainer.classList.add('hidden');
-                customInput.removeAttribute('required');
-                customInput.value = '';
-            }
+        function formatPhoneNumber(input) {
+            let value = input.value.replace(/\D/g, '');
+            if (value.startsWith('0')) value = value.substring(1);
+            if (value.startsWith('62')) value = value.substring(2);
+            input.value = value;
         }
 
-        // SweetAlert Toast Notification
         @if(session('success'))
             Swal.fire({
-                icon: 'success',
-                title: 'Berhasil!',
-                text: '{{ session('success') }}',
-                timer: 3000,
-                timerProgressBar: true,
-                showConfirmButton: false,
-                toast: true,
-                position: 'top-end',
-                customClass: {
-                    popup: 'rounded-2xl shadow-lg border border-green-100',
-                    title: 'font-heading font-bold text-slate-900',
-                }
+                icon: 'success', title: 'Berhasil!', text: '{{ session('success') }}',
+                timer: 3000, toast: true, position: 'top-end', showConfirmButton: false,
+                customClass: { popup: 'rounded-2xl shadow-lg border border-green-100', title: 'font-heading font-bold text-slate-900' }
             });
         @endif
     </script>
