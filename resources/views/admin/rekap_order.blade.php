@@ -7,26 +7,28 @@
     <h1 class="font-heading text-2xl font-bold text-slate-900 mb-6 sm:hidden">Rekap Order</h1>
 
     <div class="rounded-2xl border border-slate-100 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
-        <div class="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+        {{-- REVISI: flex-col di mobile agar teks tidak bertabrakan --}}
+        <div class="p-6 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row sm:justify-between items-start sm:items-center gap-2 sm:gap-0">
             <h2 class="text-lg font-bold text-slate-900">Daftar Order Aktif</h2>
-            <p class="text-xs text-slate-500 italic">*Order yang dibatalkan akan masuk ke menu Monitoring Cancel</p>
+            <p class="text-[11px] sm:text-xs text-slate-500 italic leading-tight">*Pembatalan atau penghapusan kini bisa dilakukan per item layanan</p>
         </div>
 
         <div class="overflow-x-auto">
             <table class="w-full text-left text-sm text-slate-600">
                 <thead class="bg-slate-50 text-xs uppercase text-slate-500 border-b border-slate-100">
                     <tr>
-                        <th class="px-6 py-4 font-semibold text-center w-16">No</th>
-                        <th class="px-6 py-4 font-semibold">Tgl Penjadwalan</th>
-                        <th class="px-6 py-4 font-semibold">Pelanggan & Lokasi</th>
-                        <th class="px-6 py-4 font-semibold text-center">Status</th>
-                        <th class="px-6 py-4 font-semibold">Detail Armada & Layanan</th>
-                        <th class="px-6 py-4 font-semibold">Pendapatan</th>
-                        <th class="px-6 py-4 font-semibold text-right">Aksi</th>
+                        {{-- REVISI: Tambah whitespace-nowrap dan min-width agar tabel tidak tergencet di mobile --}}
+                        <th class="px-6 py-4 font-semibold text-center w-16 whitespace-nowrap">No</th>
+                        <th class="px-6 py-4 font-semibold whitespace-nowrap min-w-[140px]">Tgl Penjadwalan</th>
+                        <th class="px-6 py-4 font-semibold whitespace-nowrap min-w-[220px]">Pelanggan & Lokasi</th>
+                        <th class="px-6 py-4 font-semibold text-center whitespace-nowrap min-w-[100px]">Status</th>
+                        <th class="px-6 py-4 font-semibold whitespace-nowrap min-w-[320px]">Detail Armada & Layanan</th>
+                        <th class="px-6 py-4 font-semibold whitespace-nowrap min-w-[150px]">Pendapatan</th>
+                        <th class="px-6 py-4 font-semibold text-right whitespace-nowrap min-w-[120px]">Aksi Utama</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
-                    @forelse($orders->whereIn('status_order', ['Aktif', null, '']) as $item)
+                    @forelse($orders as $item)
                     <tr class="hover:bg-slate-50/50 transition-colors">
                         <td class="px-6 py-4 font-bold text-slate-500 text-center">{{ $loop->iteration }}</td>
                         
@@ -35,13 +37,12 @@
                         </td>
 
                         <td class="px-6 py-4">
-                            <div class="flex items-start justify-between gap-2">
+                            <div class="flex items-start justify-between gap-2 min-w-[200px]">
                                 <div>
                                     <p class="font-bold text-slate-900 leading-tight">{{ $item->nama_pelanggan }}</p>
                                     <a href="https://wa.me/{{ $item->no_wa }}" target="_blank" class="text-xs text-green-600 hover:text-green-700 font-medium flex items-center gap-1 mt-1">
                                         <i class="fa-brands fa-whatsapp"></i> +{{ $item->no_wa }}
                                     </a>
-                                    {{-- Menampilkan Alamat Singkat/Catatan dari Input Order --}}
                                     @if($item->alamat)
                                         <p class="text-[10px] text-slate-400 mt-1 line-clamp-1"><i class="fa-solid fa-map-pin mr-1"></i>{{ $item->alamat }}</p>
                                     @endif
@@ -67,72 +68,112 @@
                         </td>
 
                         <td class="px-6 py-4">
-                            <div class="flex flex-col gap-1">
-                                <p class="font-bold text-slate-800 leading-tight">
-                                    {{ $item->jenis_layanan }} 
-                                    <span class="text-slate-500 font-normal">({{ $item->jumlah_rit ?? 0 }} Rit)</span>
-                                </p>
-                                
-                                <div class="flex flex-wrap gap-x-3 gap-y-1 mt-0.5">
-                                    <span class="text-[11px] text-slate-500 flex items-center gap-1.5">
-                                        <i class="fa-solid fa-truck-pickup w-3 text-center text-slate-400"></i> 
-                                        {{ $item->armada }} 
-                                        @if($item->plat_armada) 
-                                            <span class="bg-slate-100 px-1.5 py-0.5 rounded text-[10px] font-bold text-slate-700 border border-slate-200 uppercase tracking-tighter">{{ $item->plat_armada }}</span> 
-                                        @endif
-                                    </span>
-                                    
-                                    @if($item->nama_sopir)
-                                    <span class="text-[11px] text-slate-500 flex items-center gap-1.5">
-                                        <i class="fa-solid fa-user-tie w-3 text-center text-slate-400"></i> 
-                                        {{ $item->nama_sopir }}
-                                        
-                                        {{-- --- TOMBOL INDIKATOR HISTORY BARU --- --}}
-                                        @if($item->logs->count() > 0)
-                                            <span class="flex h-4 w-4 items-center justify-center rounded-full bg-orange-100 text-orange-600 animate-pulse" title="Sopir/Armada pernah diganti">
-                                                <i class="fa-solid fa-clock-rotate-left text-[9px]"></i>
-                                            </span>
-                                        @endif
-                                        {{-- ------------------------------------- --}}
+                            {{-- REVISI: Lebar responsif menggunakan Tailwind w-[...] menggantikan inline style --}}
+                            <div class="flex flex-row flex-nowrap gap-3 overflow-x-auto pb-2 scrollbar-hide w-[280px] sm:w-[350px] md:w-[450px] lg:w-[550px]">
+                                @foreach($item->items->where('status_item', 'Aktif') as $index => $service)
+                                @php
+                                    $masterDriver = \App\Models\Driver::where('nama_sopir', $service->nama_sopir)->first();
+                                    $finalWa = $masterDriver ? $masterDriver->no_wa_sopir : $service->no_wa_sopir;
+                                    $finalPlat = $masterDriver ? $masterDriver->plat_armada : $service->plat_armada;
+                                @endphp
 
-                                        @if($item->no_wa_sopir)
-                                            <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $item->no_wa_sopir) }}" target="_blank" class="text-green-600 hover:underline font-bold" title="Hubungi Sopir">
-                                                (WA)
-                                            </a>
+                                <div class="flex flex-col bg-slate-50/80 border border-slate-100 p-2.5 rounded-xl min-w-[200px] shrink-0">
+                                    <div class="flex justify-between items-start mb-1">
+                                        <p class="font-bold text-slate-800 leading-tight text-[11px]">
+                                            {{ $service->jenis_layanan }} 
+                                            <span class="text-slate-500 font-normal">({{ $service->jumlah_rit ?? 0 }} Rit)</span>
+                                        </p>
+                                    </div>
+                                    
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-[10px] text-slate-500 flex items-center gap-1">
+                                            <i class="fa-solid fa-truck-pickup text-slate-400 text-[9px]"></i> 
+                                            {{ $service->armada ?? '-' }} 
+                                        </span>
+                                        @if($finalPlat) 
+                                            <span class="bg-white px-1.5 py-0.5 rounded text-[9px] font-bold text-slate-700 border border-slate-200 uppercase tracking-tighter">{{ $finalPlat }}</span> 
                                         @endif
-                                    </span>
+                                    </div>
+                                    
+                                    <div class="mt-1.5 pt-1.5 border-t border-slate-200/50 flex flex-col gap-1">
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-[10px] text-slate-600 font-medium flex items-center gap-1 truncate">
+                                                <i class="fa-solid fa-user-tie text-[9px] text-slate-400"></i>
+                                                {{ $service->nama_sopir ?? '-' }}
+                                            </span>
+                                            <div class="flex items-center gap-1">
+                                                @if($finalWa)
+                                                <a href="https://wa.me/{{ preg_replace('/\D/', '', $finalWa) }}" target="_blank" class="text-green-600 hover:text-green-700 mr-0.5" title="Hubungi Sopir">
+                                                    <i class="fa-brands fa-whatsapp text-sm"></i>
+                                                </a>
+                                                @endif
+
+                                                <button type="button" onclick="confirmCancelItem('{{ $service->id }}', '{{ $service->jenis_layanan }}')" 
+                                                    class="flex h-7 w-7 items-center justify-center rounded-lg bg-orange-50 text-orange-500 hover:bg-orange-500 hover:text-white transition-colors" 
+                                                    title="Batalkan Layanan Ini">
+                                                    <i class="fa-solid fa-ban text-[10px]"></i>
+                                                </button>
+                                                
+                                                <button type="button" onclick="confirmDeleteItem('{{ $service->id }}')" 
+                                                    class="flex h-7 w-7 items-center justify-center rounded-lg bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-colors" 
+                                                    title="Hapus Layanan Ini">
+                                                    <i class="fa-solid fa-trash-can text-[10px]"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    @php
+                                        $searchKey = "Layanan #" . ($index + 1);
+                                        $specificLog = $item->logs->filter(function($log) use ($searchKey) {
+                                            return str_contains($log->detail, $searchKey);
+                                        })->first();
+
+                                        $labelType = "REVISI";
+                                        if ($specificLog) {
+                                            if (str_contains($specificLog->detail, 'REVISI UNIT & PERSONEL')) { $labelType = "REVISI UNIT & PERSONEL"; } 
+                                            elseif (str_contains($specificLog->detail, 'REVISI UNIT ARMADA')) { $labelType = "REVISI UNIT ARMADA"; } 
+                                            elseif (str_contains($specificLog->detail, 'REVISI PERSONEL')) { $labelType = "REVISI PERSONEL"; }
+                                        }
+                                    @endphp
+
+                                    @if($specificLog)
+                                    <div class="mt-2 bg-orange-100/50 border border-orange-200 p-1.5 rounded-lg">
+                                        <div class="flex items-center gap-1 text-orange-700 font-bold text-[8px] uppercase">
+                                            <i class="fa-solid fa-clock-rotate-left"></i> {{ $labelType }}:
+                                        </div>
+                                        <p class="text-[9px] text-orange-600 italic leading-tight mt-0.5">
+                                            "{{ $specificLog->alasan }}"
+                                        </p>
+                                    </div>
                                     @endif
                                 </div>
-
-                                {{-- Menampilkan Catatan Khusus jika ada --}}
-                                @if($item->catatan)
-                                    <p class="text-[10px] text-orange-600 bg-orange-50 px-2 py-0.5 rounded border border-orange-100 w-fit mt-1 italic">
-                                        *{{ $item->catatan }}
-                                    </p>
-                                @endif
+                                @endforeach
                             </div>
+
+                            @if($item->catatan)
+                                <div class="mt-1.5">
+                                    <p class="text-[9px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 w-fit italic">
+                                        *Keterangan: {{ $item->catatan }}
+                                    </p>
+                                </div>
+                            @endif
                         </td>
 
                         <td class="px-6 py-4 font-bold text-slate-900 whitespace-nowrap">
-                            Rp {{ number_format($item->jumlah_pendapatan, 0, ',', '.') }}
+                            Rp {{ number_format($item->total_pendapatan, 0, ',', '.') }}
                         </td>
 
                         <td class="px-6 py-4 text-right">
-                            <div class="flex items-center justify-end gap-2">
-                                <button type="button" 
-                                    onclick="confirmCancel('{{ $item->id }}', '{{ $item->nama_pelanggan }}')"
-                                    class="inline-flex items-center justify-center rounded-lg bg-orange-50 text-orange-600 hover:bg-orange-600 hover:text-white w-8 h-8 transition-colors shadow-sm" 
-                                    title="Batalkan Pesanan">
-                                    <i class="fa-solid fa-ban text-sm"></i>
-                                </button>
-
+                            {{-- REVISI: Tambahkan flex-nowrap agar tombol tidak turun baris --}}
+                            <div class="flex flex-nowrap items-center justify-end gap-2">
                                 <a href="{{ route('admin.rekap_order.edit', $item->id) }}" class="inline-flex items-center justify-center rounded-lg bg-green-50 text-green-700 px-3 py-1.5 text-xs font-bold hover:bg-green-600 hover:text-white transition-colors shadow-sm">
                                     <i class="fa-solid fa-pen-to-square mr-1.5"></i> Edit
                                 </a>
 
-                                <form action="{{ route('admin.rekap_order.destroy', $item->id) }}" method="POST" class="m-0 p-0 form-hapus">
+                                <form action="{{ route('admin.rekap_order.destroy', $item->id) }}" method="POST" class="m-0 p-0 form-hapus-total">
                                     @csrf @method('DELETE')
-                                    <button type="button" class="btn-hapus inline-flex items-center justify-center rounded-lg bg-red-50 text-red-500 hover:bg-red-500 hover:text-white w-8 h-8 transition-colors shadow-sm">
+                                    <button type="button" class="btn-hapus-total inline-flex h-8 w-8 items-center justify-center rounded-lg bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-colors shadow-sm">
                                         <i class="fa-solid fa-trash-can text-sm"></i>
                                     </button>
                                 </form>
@@ -151,55 +192,86 @@
         </div>
     </div>
 
-    {{-- Form Tersembunyi untuk Proses Cancel --}}
-    <form id="form-cancel-order" method="POST" style="display: none;">
+    <form id="form-item-action" method="POST" style="display: none;">
         @csrf @method('PUT')
-        <input type="hidden" name="alasan_cancel" id="input-alasan-cancel">
+        <input type="hidden" name="alasan_cancel" id="input-item-alasan">
     </form>
 @endsection
 
 @section('extra_js')
     <script>
-        // Logika SweetAlert Tetap Sama (Cancel, Delete, Success Toast)
-        function confirmCancel(orderId, customerName) {
+        function confirmCancelItem(itemId, layananName) {
             Swal.fire({
-                title: 'Batalkan Pesanan?',
-                text: `Alasan pembatalan order ${customerName}:`,
+                title: 'Batalkan Layanan?',
+                text: `Alasan pembatalan ${layananName}:`,
                 input: 'textarea',
-                inputPlaceholder: 'Contoh: Customer cancel sepihak / Lokasi tidak terjangkau...',
+                inputPlaceholder: 'Contoh: Sopir berhalangan / Lokasi tidak terjangkau...',
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#f97316', 
                 confirmButtonText: 'Ya, Batalkan!',
                 cancelButtonText: 'Kembali',
                 reverseButtons: true,
-                heightAuto: false, 
                 inputValidator: (value) => {
                     if (!value) { return 'Alasan wajib diisi!' }
                 }
             }).then((result) => {
                 if (result.isConfirmed) {
-                    const form = document.getElementById('form-cancel-order');
-                    form.action = `/admin/order/${orderId}/cancel`;
-                    document.getElementById('input-alasan-cancel').value = result.value;
+                    const form = document.getElementById('form-item-action');
+                    form.action = `/admin/order-item/${itemId}/cancel`;
+                    document.getElementById('input-item-alasan').value = result.value;
                     form.submit();
                 }
             });
         }
 
+        function confirmDeleteItem(itemId) {
+            Swal.fire({
+                title: 'Hapus Layanan?',
+                text: "Data layanan ini akan dihapus permanen!",
+                icon: 'error',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                confirmButtonText: 'Hapus!',
+                reverseButtons: true
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const form = document.getElementById('form-item-action');
+                    form.action = `/admin/order-item/${itemId}/destroy`;
+                    
+                    const oldMethod = form.querySelector('input[name="_method"]');
+                    if (oldMethod) oldMethod.remove();
+
+                    const methodInput = document.createElement('input');
+                    methodInput.type = 'hidden';
+                    methodInput.name = '_method';
+                    methodInput.value = 'DELETE';
+                    form.appendChild(methodInput);
+                    form.submit();
+                }
+            });
+        }
+
+        function confirmRestoreItem(itemId) {
+            const form = document.getElementById('form-item-action');
+            form.action = `/admin/order-item/${itemId}/restore`;
+            let methodInput = form.querySelector('input[name="_method"]');
+            if (methodInput) methodInput.value = 'PUT';
+            form.submit();
+        }
+
         document.addEventListener('click', function (e) {
-            if (e.target.closest('.btn-hapus')) {
-                const button = e.target.closest('.btn-hapus');
-                const form = button.closest('.form-hapus');
+            if (e.target.closest('.btn-hapus-total')) {
+                const button = e.target.closest('.btn-hapus-total');
+                const form = button.closest('.form-hapus-total');
                 Swal.fire({
-                    title: 'Hapus Permanen?',
-                    text: "Data akan dihapus selamanya!",
+                    title: 'Hapus Seluruh Nota?',
+                    text: "Semua layanan dalam nota ini akan dihapus permanen!",
                     icon: 'error',
                     showCancelButton: true,
                     confirmButtonColor: '#ef4444',
-                    confirmButtonText: 'Hapus!',
-                    reverseButtons: true,
-                    heightAuto: false
+                    confirmButtonText: 'Hapus Semua!',
+                    reverseButtons: true
                 }).then((result) => { if (result.isConfirmed) form.submit(); });
             }
         });

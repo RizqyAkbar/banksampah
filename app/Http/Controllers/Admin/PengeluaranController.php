@@ -17,21 +17,25 @@ class PengeluaranController extends Controller
     // Menyimpan data pengeluaran ke database
     public function store(Request $request)
     {
-        $data = $request->validate([
+        $request->validate([
             'tanggal' => 'required|date',
             'kategori' => 'required',
             'kategori_manual' => 'nullable|string',
             'nominal' => 'required|numeric',
             'keterangan' => 'nullable|string',
         ]);
-    
+
+        // Ambil semua input
+        $input = $request->all();
+
+        // LOGIKA FIX: Jika pilih Lainnya, ganti nilai kategori dengan input manual
         if ($request->kategori === 'Lainnya' && $request->filled('kategori_manual')) {
-            $data['kategori'] = $request->kategori_manual;
+            $input['kategori'] = $request->kategori_manual;
         }
-    
-        Pengeluaran::create($data);
-    
-        // Gunakan nama route yang konsisten dengan web.php
+
+        // Gunakan variabel $input (yang sudah dimodifikasi) untuk simpan ke DB
+        Pengeluaran::create($input);
+
         return redirect()->route('admin.pengeluaran')->with('success', 'Pengeluaran berhasil dicatat!');
     }
 

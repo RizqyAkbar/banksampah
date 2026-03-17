@@ -11,8 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('orders', function (Blueprint $table) {
-            $table->string('no_invoice')->nullable()->unique()->after('id');
+        Schema::table('pengeluarans', function (Blueprint $table) {
+            // Mengubah tipe data menjadi string agar bisa menampung input manual yang panjang
+            $table->string('kategori')->change();
         });
     }
 
@@ -21,9 +22,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('orders', function (Blueprint $table) {
-            // Menghapus kolom jika migration di-rollback
-            $table->dropColumn('no_invoice');
+        Schema::table('pengeluarans', function (Blueprint $table) {
+            //
         });
     }
 };

@@ -94,5 +94,39 @@
         });
     </script>
     @yield('extra_js')
+
+    <script>
+        function updateSidebarBadge() {
+            fetch("{{ route('admin.dashboard.realtime') }}")
+                .then(response => response.json())
+                .then(data => {
+                    // 1. Update Badge Sidebar
+                    const badge = document.getElementById('sidebar-badge');
+                    if (badge) {
+                        if (data.badge > 0) {
+                            badge.innerText = data.badge;
+                            badge.classList.remove('hidden');
+                            badge.classList.add('flex');
+                        } else {
+                            badge.classList.add('hidden');
+                            badge.classList.remove('flex');
+                        }
+                    }
+
+                    // 2. Update Tabel (Hanya jika sedang di halaman dashboard)
+                    const tbody = document.getElementById('jadwal-tbody');
+                    if (tbody && data.html) {
+                        tbody.innerHTML = data.html;
+                    }
+                })
+                .catch(error => console.error('Error badge:', error));
+        }
+
+        // Jalankan setiap 10 detik agar lebih responsif
+        setInterval(updateSidebarBadge, 10000);
+        
+        // Jalankan juga sekali saat halaman pertama kali dimuat
+        document.addEventListener('DOMContentLoaded', updateSidebarBadge);
+    </script>
 </body>
 </html>

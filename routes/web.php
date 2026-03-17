@@ -4,7 +4,9 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\AdminAuthController; 
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\OrderController;
+use App\Http\Controllers\Admin\DriverController;
 use App\Http\Controllers\Admin\PengeluaranController;
+use App\Http\Controllers\Admin\ServiceController; // Pastikan ini terpanggil
 
 Route::get('/', function () {
     return view('landing_page');
@@ -28,6 +30,7 @@ Route::prefix('admin')->group(function () {
         
         // Dashboard
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
+        Route::get('/dashboard/realtime', [OrderController::class, 'getRealtimeDashboard'])->name('admin.dashboard.realtime');
 
         // Input Order
         Route::get('/input-order', [OrderController::class, 'create'])->name('admin.input_order');
@@ -42,8 +45,8 @@ Route::prefix('admin')->group(function () {
         // CREATE INVOICE
         Route::get('/create-invoice', [OrderController::class, 'invoiceIndex'])->name('admin.invoice_index');
         Route::get('/order-detail/{id}', [OrderController::class, 'getDetail'])->name('admin.order.detail');
-        Route::get('/invoice/print/{id}', [OrderController::class, 'printInvoice'])->name('admin.invoice.print');
-        
+        Route::get('/invoice/print/{id}', [OrderController::class, 'invoicePrint'])->name('admin.invoice.print');
+
         // PAYMENT
         Route::get('/payment', [OrderController::class, 'paymentIndex'])->name('admin.payment_index');
         Route::put('/payment/{id}', [OrderController::class, 'paymentUpdate'])->name('admin.payment_update');
@@ -61,6 +64,26 @@ Route::prefix('admin')->group(function () {
         Route::put('/order/{id}/cancel', [OrderController::class, 'cancel'])->name('admin.order.cancel');
         Route::put('/order/{id}/restore', [OrderController::class, 'restore'])->name('admin.order.restore');
 
+        Route::put('/order-item/{id}/cancel', [OrderController::class, 'cancelItem'])->name('admin.item.cancel');
+        Route::put('/order-item/{id}/restore', [OrderController::class, 'restoreItem'])->name('admin.item.restore');
+        Route::delete('/order-item/{id}/destroy', [OrderController::class, 'destroyItem'])->name('admin.item.destroy');
+
         Route::get('/laporan', [OrderController::class, 'laporan'])->name('admin.laporan');
+
+        // Master Sopir
+        Route::get('/master-sopir', [DriverController::class, 'index'])->name('admin.master_sopir.index');
+        Route::post('/master-sopir', [DriverController::class, 'store'])->name('admin.master_sopir.store');
+        Route::put('/master-sopir/{id}', [DriverController::class, 'update'])->name('admin.master_sopir.update');
+        Route::delete('/master-sopir/{id}', [DriverController::class, 'destroy'])->name('admin.master_sopir.destroy');
+        
+        Route::get('/api/search-drivers', [DriverController::class, 'search'])->name('admin.api.drivers.search');
+
+        // REVISI MASTER LAYANAN (Disamakan menggunakan {id})
+        Route::prefix('master-layanan')->name('admin.master_layanan.')->group(function () {
+            Route::get('/', [ServiceController::class, 'index'])->name('index');
+            Route::post('/simpan', [ServiceController::class, 'store'])->name('store');
+            Route::put('/{id}', [ServiceController::class, 'update'])->name('update');
+            Route::delete('/{id}', [ServiceController::class, 'destroy'])->name('destroy');
+        });
     });
 });

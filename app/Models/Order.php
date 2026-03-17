@@ -23,8 +23,8 @@ class Order extends Model
         'jumlah_rit',
         'harga_per_rit',
         'hpp_per_rit',
-        'jumlah_pendapatan',
-        'jumlah_keuntungan',
+        'total_pendapatan',
+        'total_keuntungan',
 
         // TAMBAHKAN 3 BARIS INI:
         'status_pembayaran',
@@ -47,5 +47,10 @@ class Order extends Model
     public function logs()
     {
         return $this->hasMany(OrderLog::class)->orderBy('created_at', 'desc');
+    }
+
+    public function items()
+    {
+        return $this->hasMany(OrderItem::class);
     }
 }

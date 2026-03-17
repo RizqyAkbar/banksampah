@@ -11,8 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('orders', function (Blueprint $table) {
-            $table->integer('jumlah_dibayar')->default(0)->after('jumlah_pendapatan');
+        Schema::create('drivers', function (Blueprint $table) {
+            $table->id();
+            $table->string('nama_sopir');
+            $table->string('no_wa_sopir');
+            $table->string('plat_armada');
+            $table->timestamps();
         });
     }
 
@@ -21,8 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('orders', function (Blueprint $table) {
-            //
-        });
+        Schema::dropIfExists('drivers');
     }
 };

@@ -8,7 +8,6 @@
 
     {{-- TOP STATS (5 KOTAK) --}}
     <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 mb-8">
-        
         <div class="rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-md transition-shadow">
             <div class="flex items-center justify-between">
                 <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Pendapatan (Bulan Ini)</p>
@@ -73,15 +72,13 @@
                 <p class="text-xs text-red-400 mt-1">Butuh rekap data</p>
             </div>
         </div>
-
     </div> 
     
-    {{-- BAGIAN BARU: LAPORAN POPULASI LAYANAN (FULL WIDTH) --}}
+    {{-- POPULASI LAYANAN --}}
     <div class="rounded-2xl border border-slate-100 bg-white p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-6">
         <div class="flex items-center justify-between mb-6 border-b border-slate-50 pb-4">
             <div class="flex items-center gap-3">
                 <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50 text-orange-600">
-                    {{-- IKON BARU --}}
                     <i class="fa-solid fa-chart-pie text-lg"></i> 
                 </div>
                 <h3 class="text-lg font-bold text-slate-900 font-heading">Populasi Layanan</h3>
@@ -93,7 +90,6 @@
             @forelse($statistikLayanan as $layanan)
             <div class="group">
                 <div class="flex justify-between items-end mb-2">
-                    {{-- Tambahkan truncate agar jika admin input layanan kustom yang panjang tidak berantakan --}}
                     <span class="text-sm font-bold text-slate-700 group-hover:text-orange-600 transition-colors truncate max-w-[150px]" title="{{ $layanan->jenis_layanan }}">
                         {{ $layanan->jenis_layanan }}
                     </span>
@@ -102,7 +98,6 @@
                         <span class="text-[10px] text-slate-400 font-bold uppercase ml-1">Order</span>
                     </div>
                 </div>
-                {{-- Progress Bar --}}
                 <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden shadow-inner">
                     @php 
                         $maxLayanan = $statistikLayanan->max('total') ?: 1;
@@ -119,7 +114,7 @@
         </div>
     </div>
 
-    {{-- BAGIAN BARU: LAPORAN DISTRIBUSI ARMADA (FULL WIDTH) --}}
+    {{-- DISTRIBUSI ARMADA --}}
     <div class="rounded-2xl border border-slate-100 bg-white p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-8">
         <div class="flex items-center justify-between mb-6 border-b border-slate-50 pb-4">
             <div class="flex items-center gap-3">
@@ -131,7 +126,6 @@
             <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2 py-1 bg-slate-50 rounded-md border border-slate-100">Global</span>
         </div>
         
-        {{-- Menggunakan Grid 2 sampai 6 Kolom agar kotak menyesuaikan ke samping --}}
         <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
             @forelse($statistikArmada as $armada)
             <div class="p-5 rounded-2xl bg-slate-50 border border-slate-100 hover:border-blue-300 hover:bg-white hover:shadow-md transition-all group">
@@ -175,41 +169,8 @@
                         <th class="px-6 py-4 font-semibold text-right">Aksi</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-100">
-                    @forelse($jadwalHariIni as $order)
-                    <tr class="hover:bg-slate-50/50 transition-colors">
-                        <td class="px-6 py-4">
-                            <p class="font-bold text-slate-900">{{ $order->nama_pelanggan }}</p>
-                            <p class="text-xs text-slate-400">{{ $order->no_wa }}</p>
-                        </td>
-                        <td class="px-6 py-4">
-                            <p class="font-medium text-slate-800">{{ $order->jenis_layanan }}</p>
-                            <p class="text-xs text-slate-500">{{ $order->armada }}</p>
-                        </td>
-                        <td class="px-6 py-4">
-                            @if($order->jumlah_pendapatan > 0)
-                                <span class="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 border border-emerald-100">
-                                    <i class="fa-solid fa-check mr-1.5"></i> Rekap Selesai
-                                </span>
-                            @else
-                                <span class="inline-flex items-center rounded-full bg-orange-50 px-2.5 py-1 text-xs font-semibold text-orange-700 border border-orange-100">
-                                    <i class="fa-solid fa-clock mr-1.5"></i> Tunggu Rekap
-                                </span>
-                            @endif
-                        </td>
-                        <td class="px-6 py-4 text-right whitespace-nowrap">
-                            <a href="{{ route('admin.rekap_order.edit', $order->id) }}" class="text-slate-400 hover:text-green-600 transition-colors" title="Lengkapi Data">
-                                <i class="fa-solid fa-pen-to-square text-lg"></i>
-                            </a>
-                        </td>
-                    </tr>
-                    @empty
-                    <tr>
-                        <td colspan="4" class="px-6 py-12 text-center text-slate-400 italic">
-                            Tidak ada jadwal pesanan untuk hari ini.
-                        </td>
-                    </tr>
-                    @endforelse
+                <tbody id="jadwal-tbody" class="divide-y divide-slate-100">
+                    @include('admin.partials.dashboard_table', ['jadwalHariIni' => $jadwalHariIni])
                 </tbody>
             </table>
         </div>

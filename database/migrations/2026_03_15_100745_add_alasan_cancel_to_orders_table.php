@@ -6,12 +6,14 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    public function up()
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
     {
         Schema::table('orders', function (Blueprint $table) {
-            $table->string('status_pembayaran')->default('Belum Lunas');
-            $table->string('metode_pembayaran')->nullable();
-            $table->date('tanggal_pelunasan')->nullable();
+            // Tambahkan kolom ini di database
+            $table->text('alasan_cancel')->nullable()->after('status_order');
         });
     }
 

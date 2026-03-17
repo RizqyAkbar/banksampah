@@ -10,9 +10,8 @@ return new class extends Migration
      * Run the migrations.
      */
     public function up(): void {
-        Schema::table('orders', function (Blueprint $table) {
-            $table->string('status_order')->default('Aktif'); // Aktif, Batal
-            $table->text('alasan_cancel')->nullable();
+        Schema::table('services', function (Blueprint $table) {
+            $table->string('armada')->nullable()->after('nama_layanan'); 
         });
     }
 
@@ -21,7 +20,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('orders', function (Blueprint $table) {
+        Schema::table('services', function (Blueprint $table) {
             //
         });
     }

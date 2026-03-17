@@ -9,10 +9,9 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function up(): void
-    {
-        Schema::table('orders', function (Blueprint $table) {
-            $table->text('catatan_pembayaran')->nullable()->after('metode_pembayaran');
+    public function up() {
+        Schema::table('drivers', function ($table) {
+            $table->dropColumn('jenis_armada');
         });
     }
 
@@ -21,7 +20,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('orders', function (Blueprint $table) {
+        Schema::table('drivers', function (Blueprint $table) {
             //
         });
     }

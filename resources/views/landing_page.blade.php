@@ -11,7 +11,107 @@
     
     <link rel="stylesheet" href="{{ asset('css/style.css') }}">
 
-    
+    <style>
+        /* CSS REVISI CAROUSEL ACTIVITY & DOTS */
+        .activity-section {
+            padding: 80px 0;
+            background: #f8fafc;
+            overflow: hidden;
+        }
+
+        .activity-container {
+            position: relative;
+            width: 100%;
+            margin-top: 40px;
+        }
+
+        .activity-viewport {
+            overflow: hidden;
+            width: 100%;
+            border-radius: 16px;
+        }
+
+        .activity-track {
+            display: flex;
+            gap: 20px; /* Jarak antar foto */
+            transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+            will-change: transform;
+            touch-action: pan-y; /* Membantu swipe di mobile */
+        }
+
+        .activity-item {
+            /* Desktop Default: 4 item */
+            flex: 0 0 calc(25% - 15px);
+            min-width: calc(25% - 15px);
+            border-radius: 16px;
+            overflow: hidden;
+            height: 320px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.03);
+            background: white;
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .activity-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.7s ease;
+        }
+
+        .activity-item:hover img {
+            transform: scale(1.1);
+        }
+
+        /* Pagination Dots */
+        .activity-dots {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 30px;
+            flex-wrap: wrap; /* Agar dots tidak berantakan jika banyak */
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #cbd5e1;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .dot.active {
+            background: #10b981;
+            width: 24px;
+            border-radius: 4px;
+        }
+
+        /* RESPONSIVE REVISI */
+        @media (max-width: 1024px) {
+            .activity-item {
+                flex: 0 0 calc(50% - 10px); /* 2 item di Tablet */
+                min-width: calc(50% - 10px);
+            }
+        }
+
+        @media (max-width: 640px) {
+            .activity-section {
+                padding: 60px 0;
+            }
+            
+            /* REVISI: Tambahan margin agar teks dan foto tidak menempel di tepi layar */
+            #activity .container {
+                padding-left: 24px;
+                padding-right: 24px;
+            }
+
+            .activity-item {
+                flex: 0 0 100%; /* REVISI: Tampilan 1 foto full di Mobile */
+                min-width: 100%;
+                height: 280px; /* Ukuran lebih proporsional untuk 1 foto */
+            }
+        }
+    </style>
 </head>
 <body>
 
@@ -27,6 +127,7 @@
     <ul class="nav-links">
       <li><a href="#layanan">Layanan</a></li>
       <li><a href="#keunggulan">Keunggulan</a></li>
+      <li><a href="#activity">Activity</a></li>
       <li><a href="#harga">Harga</a></li>
     </ul>
 
@@ -44,6 +145,7 @@
       <ul class="mobile-nav-links">
           <li><a href="#layanan">Layanan</a></li>
           <li><a href="#keunggulan">Keunggulan</a></li>
+          <li><a href="#activity">Activity</a></li>
           <li><a href="#harga">Harga</a></li>
       </ul>
   </div>
@@ -66,7 +168,7 @@
           Hubungi Admin
         </a>
         <a href="#harga" class="btn-outline">
-          Cek Estimasi Harga <i class="fa-solid fa-arrow-down" style="font-size:12px;"></i>
+          <i class="fa-solid fa-tag" style="font-size:12px; margin-right: 5px;"></i> Cek Estimasi Harga
         </a>
       </div>
       <div class="hero-stats">
@@ -157,6 +259,31 @@
         <i class="fa-solid fa-truck"></i>
         <span>Armada Lengkap</span>
       </div>
+    </div>
+  </div>
+</section>
+
+<section id="activity" class="activity-section">
+  <div class="container">
+    <div class="section-header" data-reveal="fade">
+      <div>
+        <p class="section-label">Gallery</p>
+        <h2 class="section-title">Activity & Dokumentasi</h2>
+      </div>
+      <p class="section-sub">Dokumentasi tim kami saat membersihkan dan mengangkut sampah di berbagai lokasi.</p>
+    </div>
+    
+    <div class="activity-container">
+      <div class="activity-viewport" id="activityViewport">
+        <div class="activity-track" id="activityTrack">
+          @for ($i = 1; $i <= 20; $i++)
+          <div class="activity-item">
+            <img src="{{ asset('images/'.$i.'.jpeg') }}" alt="Dokumentasi {{ $i }}" loading="lazy">
+          </div>
+          @endfor
+        </div>
+      </div>
+      <div class="activity-dots" id="activityDots"></div>
     </div>
   </div>
 </section>
@@ -312,6 +439,7 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // --- MOBILE MENU ---
         const mainNav = document.getElementById('main-nav');
         const hamburgerBtn = document.getElementById('hamburger-btn');
         const mobileMenu = document.getElementById('mobile-menu');
@@ -320,29 +448,132 @@
         if (hamburgerBtn && mobileMenu) {
             hamburgerBtn.addEventListener('click', function() {
                 mobileMenu.classList.toggle('active');
-                
                 mainNav.classList.toggle('menu-open');
-                
                 const icon = hamburgerBtn.querySelector('i');
                 if(mobileMenu.classList.contains('active')) {
-                    icon.classList.remove('fa-bars');
-                    icon.classList.add('fa-xmark');
+                    icon.classList.replace('fa-bars', 'fa-xmark');
                 } else {
-                    icon.classList.remove('fa-xmark');
-                    icon.classList.add('fa-bars');
+                    icon.classList.replace('fa-xmark', 'fa-bars');
                 }
             });
-
             mobileLinks.forEach(link => {
                 link.addEventListener('click', () => {
                     mobileMenu.classList.remove('active');
                     mainNav.classList.remove('menu-open'); 
-                    const icon = hamburgerBtn.querySelector('i');
-                    icon.classList.remove('fa-xmark');
-                    icon.classList.add('fa-bars');
+                    hamburgerBtn.querySelector('i').classList.replace('fa-xmark', 'fa-bars');
                 });
             });
         }
+
+        // --- CAROUSEL ACTIVITY LOGIC & SWIPE ---
+        const track = document.getElementById('activityTrack');
+        const dotsContainer = document.getElementById('activityDots');
+        const items = document.querySelectorAll('.activity-item');
+        let index = 0;
+        let autoPlayInterval;
+
+        function getVisibleItems() {
+            if (window.innerWidth > 1024) return 4;
+            if (window.innerWidth > 640) return 2;
+            return 1; // 1 foto penuh di Mobile
+        }
+
+        function createDots() {
+            dotsContainer.innerHTML = '';
+            const visibleItems = getVisibleItems();
+            const dotCount = items.length - visibleItems + 1;
+            
+            for (let i = 0; i < dotCount; i++) {
+                const dot = document.createElement('div');
+                dot.classList.add('dot');
+                if (i === 0) dot.classList.add('active');
+                dot.addEventListener('click', () => goToSlide(i));
+                dotsContainer.appendChild(dot);
+            }
+        }
+
+        function updateDots() {
+            const dots = document.querySelectorAll('.dot');
+            dots.forEach((dot, i) => {
+                dot.classList.toggle('active', i === index);
+            });
+        }
+
+        function goToSlide(n) {
+            index = n;
+            const visibleItems = getVisibleItems();
+            
+            // Logika looping
+            if (index > items.length - visibleItems) index = 0;
+            if (index < 0) index = items.length - visibleItems;
+            
+            const gap = 20; // Selalu 20px gap agar konsisten saat transisi
+            const itemWidth = items[0].offsetWidth + gap;
+            
+            track.style.transform = `translateX(-${index * itemWidth}px)`;
+            updateDots();
+        }
+
+        function nextSlide() {
+            const visibleItems = getVisibleItems();
+            if (index < items.length - visibleItems) {
+                index++;
+            } else {
+                index = 0;
+            }
+            goToSlide(index);
+        }
+
+        function startAutoPlay() {
+            // Hindari interval ganda
+            clearInterval(autoPlayInterval);
+            autoPlayInterval = setInterval(nextSlide, 4000);
+        }
+
+        function stopAutoPlay() {
+            clearInterval(autoPlayInterval);
+        }
+
+        // Init
+        createDots();
+        startAutoPlay();
+
+        // Fitur Geser Jari (Swipe) untuk Layar Sentuh/Mobile
+        let startX = 0;
+        let endX = 0;
+        
+        track.addEventListener('touchstart', (e) => {
+            startX = e.touches[0].clientX;
+            stopAutoPlay();
+        }, {passive: true});
+        
+        track.addEventListener('touchmove', (e) => {
+            endX = e.touches[0].clientX;
+        }, {passive: true});
+        
+        track.addEventListener('touchend', () => {
+            if (startX - endX > 50) {
+                // Usap ke Kiri (Next)
+                nextSlide();
+            } else if (endX - startX > 50) {
+                // Usap ke Kanan (Prev)
+                index--;
+                goToSlide(index);
+            }
+            startAutoPlay();
+        });
+
+        // Pause on Hover (Desktop)
+        const container = document.querySelector('.activity-container');
+        container.addEventListener('mouseenter', stopAutoPlay);
+        container.addEventListener('mouseleave', startAutoPlay);
+
+        // Update on resize window
+        window.addEventListener('resize', () => {
+            index = 0;
+            createDots();
+            goToSlide(0);
+        });
     });
 </script>
 
