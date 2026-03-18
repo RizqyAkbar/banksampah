@@ -29,6 +29,10 @@
             font-size: 0.85rem !important;
             margin-bottom: 0.1rem !important;
         }
+        .swal2-toast .swal2-html-container {
+            font-size: 0.75rem !important;
+            margin: 0 !important;
+        }
         .swal2-toast .swal2-icon {
             transform: scale(0.6) !important;
             margin: 0 0.5rem 0 0 !important;
@@ -53,7 +57,7 @@
                 Tambah Sopir Baru
             </h2>
         </div>
-        <form action="{{ route('admin.master_sopir.store') }}" method="POST" class="p-4 sm:p-6">
+        <form id="formTambah" action="{{ route('admin.master_sopir.store') }}" method="POST" class="p-4 sm:p-6">
             @csrf
             {{-- REVISI: Gap diperkecil di mobile --}}
             <div class="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4 items-end">
@@ -65,7 +69,8 @@
                     <label class="block text-[10px] sm:text-xs font-bold text-slate-500 uppercase mb-1 sm:mb-1.5">No. WhatsApp</label>
                     <div class="flex">
                         <span class="inline-flex items-center px-3 sm:px-4 rounded-l-xl border border-r-0 border-slate-200 bg-slate-100 text-slate-500 text-xs sm:text-sm font-bold">+62</span>
-                        <input type="tel" name="no_wa_sopir" placeholder="8123..." class="form-input rounded-l-none" required>
+                        {{-- REVISI: Penambahan oninput="formatPhoneNumber(this)" --}}
+                        <input type="tel" name="no_wa_sopir" placeholder="8123..." class="form-input rounded-l-none" oninput="formatPhoneNumber(this)" required>
                     </div>
                 </div>
                 <div class="md:col-span-3">
@@ -152,7 +157,8 @@
                 <label class="block text-[10px] sm:text-xs font-bold text-slate-500 uppercase mb-1 sm:mb-1.5">No. WhatsApp</label>
                 <div class="flex">
                     <span class="inline-flex items-center px-3 sm:px-4 rounded-l-xl border border-r-0 border-slate-200 bg-slate-100 text-slate-500 text-xs sm:text-sm font-bold">+62</span>
-                    <input type="tel" name="no_wa_sopir" id="edit_wa" class="form-input rounded-l-none" required>
+                    {{-- REVISI: Penambahan oninput="formatPhoneNumber(this)" --}}
+                    <input type="tel" name="no_wa_sopir" id="edit_wa" class="form-input rounded-l-none" oninput="formatPhoneNumber(this)" required>
                 </div>
             </div>
 
@@ -171,6 +177,21 @@
 
 @section('extra_js')
 <script>
+    // REVISI: Fungsi Javascript Pembersih Format No WA secara Realtime (Paste & Ketik)
+    function formatPhoneNumber(input) {
+        let value = input.value.replace(/\D/g, ''); // Hapus semua karakter selain angka (spasi, tanda hubung, dll)
+        
+        // Hapus kode negara / angka 0 di depan jika terdeteksi
+        if (value.startsWith('0')) {
+            value = value.substring(1);
+        }
+        if (value.startsWith('62')) {
+            value = value.substring(2);
+        }
+        
+        input.value = value;
+    }
+
     function editDriver(driver) {
         const modal = document.getElementById('modalEdit');
         const form = document.getElementById('formEdit');
@@ -190,7 +211,18 @@
         modal.classList.remove('hidden');
     }
 
-    // Pastikan saat submit, angka 62 ditambahkan kembali
+    // Pastikan saat submit, angka 62 ditambahkan kembali untuk form TAMBAH
+    document.getElementById('formTambah').onsubmit = function() {
+        const inputWa = document.querySelector('#formTambah input[name="no_wa_sopir"]');
+        let value = inputWa.value.replace(/\D/g, ''); // Ambil hanya angka
+        
+        if (value.startsWith('0')) value = value.substring(1);
+        if (value.startsWith('62')) value = value.substring(2);
+        
+        inputWa.value = '62' + value;
+    };
+
+    // Pastikan saat submit, angka 62 ditambahkan kembali untuk form EDIT
     document.getElementById('formEdit').onsubmit = function() {
         const inputWa = document.getElementById('edit_wa');
         let value = inputWa.value.replace(/\D/g, ''); // Ambil hanya angka
