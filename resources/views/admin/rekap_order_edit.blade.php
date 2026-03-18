@@ -60,7 +60,7 @@
     }
     .layanan-block { position: relative; }
 
-    /* REVISI: Penyesuaian ketebalan input & SweetAlert khusus untuk Mobile */
+    /* Penyesuaian ketebalan input & SweetAlert khusus untuk Mobile */
     @media (max-width: 640px) {
         .form-input { padding: 0.6rem 0.75rem; font-size: 0.8rem; }
         .input-group-text-custom { padding: 0 0.5rem; font-size: 0.7rem; }
@@ -91,6 +91,20 @@
 @endsection
 
 @section('content')
+    {{-- Pemisahan Data Layanan (Pickup vs Dump) --}}
+    @php
+        $allServices = \App\Models\Service::all();
+        $pickupServices = [];
+        $dumpServices = [];
+        foreach($allServices as $l) {
+            if(stripos($l->armada, 'dump') !== false || stripos($l->armada, 'truk') !== false) {
+                $dumpServices[] = $l;
+            } else {
+                $pickupServices[] = $l;
+            }
+        }
+    @endphp
+
     <div class="flex items-center justify-between mb-6">
         <h1 class="font-heading text-2xl font-bold text-slate-900 sm:hidden">Lengkapi Rekap</h1>
         <span class="px-3 py-1 {{ $order->status_pelanggan == 'Pelanggan' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700' }} font-bold rounded-full text-xs">
@@ -99,13 +113,11 @@
     </div>
 
     <div class="max-w-4xl mx-auto w-full">
-        {{-- REVISI: Padding disesuaikan sm:p-8 dan p-4 --}}
         <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 sm:p-8">
             <form action="{{ route('admin.rekap_order.update', $order->id) }}" method="POST" id="formRekap">
                 @csrf
                 @method('PUT')
                 
-                {{-- REVISI: Gap dan padding diperkecil --}}
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-6 mb-6 sm:mb-8 bg-slate-50 p-4 sm:p-5 rounded-xl border border-slate-100">
                     <div>
                         <p class="text-[10px] sm:text-xs text-slate-500 font-semibold mb-0.5 sm:mb-1 uppercase tracking-wider">Nama Pelanggan</p>
@@ -134,18 +146,45 @@
                         <input type="hidden" class="old-plat" name="plat_armada_lama[]" value="{{ $item->plat_armada }}">
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mt-2">
-                            <div>
-                                <label class="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5 sm:mb-2">Jenis Layanan</label>
-                                <select name="jenis_layanan[]" class="form-input select-jasa" required onchange="handleJasaChange(this)">
-                                    <option value="">-- Pilih Jasa --</option>
-                                    @foreach(\App\Models\Service::all() as $master)
-                                        <option value="{{ $master->nama_layanan }}" 
-                                                data-armada="{{ $master->armada }}"
-                                                {{ ($item->jenis_layanan == $master->nama_layanan && $item->armada == $master->armada) ? 'selected' : '' }}>
-                                            {{ $master->nama_layanan }} ({{ $master->armada }})
-                                        </option>
-                                    @endforeach
-                                </select>
+                            
+                            {{-- REVISI: Dua Pilihan Select Bersandingan --}}
+                            <div class="md:col-span-2">
+                                <p class="text-[10px] font-bold text-slate-400 uppercase mb-3">*Pilih salah satu jasa (Pickup ATAU Truk Dump)</p>
+                                
+                                @php
+                                    $isDump = stripos($item->armada, 'dump') !== false || stripos($item->armada, 'truk') !== false;
+                                @endphp
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 mb-4">
+                                    <div class="jasa-select-wrapper">
+                                        <label class="mb-1.5 sm:mb-2 block text-[10px] font-bold text-blue-600 uppercase">1. Jasa Pickup</label>
+                                        <select class="form-input select-jasa-pickup border-blue-100 focus:border-blue-400" onchange="syncJasa(this, 'pickup')">
+                                            <option value="">-- Pilih Jasa Pickup --</option>
+                                            @foreach($pickupServices as $layanan)
+                                                <option value="{{ $layanan->nama_layanan }}" 
+                                                        data-armada="{{ $layanan->armada }}"
+                                                        {{ (!$isDump && $item->jenis_layanan == $layanan->nama_layanan && $item->armada == $layanan->armada) ? 'selected' : '' }}>
+                                                    {{ $layanan->nama_layanan }} ({{ $layanan->armada }})
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="jasa-select-wrapper">
+                                        <label class="mb-1.5 sm:mb-2 block text-[10px] font-bold text-orange-600 uppercase">2. Jasa Truk Dump</label>
+                                        <select class="form-input select-jasa-dump border-orange-100 focus:border-orange-400" onchange="syncJasa(this, 'dump')">
+                                            <option value="">-- Pilih Jasa Truk Dump --</option>
+                                            @foreach($dumpServices as $layanan)
+                                                <option value="{{ $layanan->nama_layanan }}" 
+                                                        data-armada="{{ $layanan->armada }}"
+                                                        {{ ($isDump && $item->jenis_layanan == $layanan->nama_layanan && $item->armada == $layanan->armada) ? 'selected' : '' }}>
+                                                    {{ $layanan->nama_layanan }} ({{ $layanan->armada }})
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    {{-- Hidden Input untuk dikirim ke Backend --}}
+                                    <input type="text" name="jenis_layanan[]" value="{{ $item->jenis_layanan }}" class="real-jasa-input absolute w-0 h-0 opacity-0 pointer-events-none" tabindex="-1">
+                                </div>
                             </div>
 
                             <div>
@@ -246,7 +285,6 @@
                     </div>
                 </div>
 
-                {{-- REVISI: Tombol disesuaikan ukurannya --}}
                 <div class="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-slate-100 flex flex-col sm:flex-row justify-end gap-2 sm:gap-3">
                     <a href="{{ route('admin.rekap_order') }}" class="w-full sm:w-auto text-center px-4 sm:px-6 py-3 sm:py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">Batal</a>
                     <button type="submit" id="btnSubmit" class="w-full sm:w-auto px-4 sm:px-8 py-3 sm:py-2.5 bg-[#00C264] text-white rounded-xl text-xs sm:text-sm font-bold shadow-lg hover:bg-[#009B4E] transition">Simpan Semua Rekap</button>
@@ -291,16 +329,31 @@
     const iconAlasan = document.getElementById('reasonIcon');
     const errorText = document.getElementById('errorText');
 
-    function handleJasaChange(select) {
-        const block = select.closest('.layanan-block');
+    // REVISI: Fungsi sinkronisasi untuk dua dropdown
+    function syncJasa(selectElement, type) {
+        const block = selectElement.closest('.layanan-block');
+        const pickupSelect = block.querySelector('.select-jasa-pickup');
+        const dumpSelect = block.querySelector('.select-jasa-dump');
+        const realInput = block.querySelector('.real-jasa-input');
         const inputArmada = block.querySelector('.input-armada');
-        const selectedOption = select.options[select.selectedIndex];
-        
-        if (selectedOption.value !== "") {
-            inputArmada.value = selectedOption.getAttribute('data-armada') || '';
-        } else {
-            inputArmada.value = '';
+
+        if (type === 'pickup' && selectElement.value !== "") {
+            dumpSelect.value = "";
+        } else if (type === 'dump' && selectElement.value !== "") {
+            pickupSelect.value = "";
         }
+
+        const activeSelect = (pickupSelect.value !== "") ? pickupSelect : ((dumpSelect.value !== "") ? dumpSelect : null);
+
+        if (!activeSelect || activeSelect.value === "") {
+            realInput.value = '';
+            inputArmada.value = '';
+        } else {
+            const selectedOption = activeSelect.selectedOptions[0];
+            realInput.value = activeSelect.value;
+            inputArmada.value = selectedOption.getAttribute('data-armada') || '-';
+        }
+        
         checkChanges();
     }
 
@@ -409,6 +462,27 @@
 
     form.onsubmit = function(e) {
         checkChanges();
+
+        // Validasi pilihan jasa
+        const inputs = document.querySelectorAll('.real-jasa-input');
+        let isValid = true;
+        inputs.forEach(input => {
+            if(input.value.trim() === '') {
+                isValid = false;
+            }
+        });
+
+        if(!isValid) {
+            e.preventDefault();
+            Swal.fire({
+                icon: 'error',
+                title: 'Form Belum Lengkap',
+                text: 'Pastikan Anda telah memilih Jasa (Pickup ATAU Truk Dump) pada setiap baris layanan!',
+                customClass: { popup: 'rounded-2xl shadow-lg border border-red-100', title: 'font-heading font-bold text-slate-900' }
+            });
+            return false;
+        }
+
         if (inputAlasan.hasAttribute('required') && !inputAlasan.value.trim()) {
             e.preventDefault();
             Swal.fire({
