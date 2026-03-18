@@ -4,12 +4,43 @@
 @section('header_title', 'Data Pengeluaran')
 
 @section('content')
-    {{-- REVISI: flex-col di mobile agar Judul dan Tombol tidak saling gencet --}}
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <h1 class="font-heading text-2xl font-bold text-slate-900">Daftar Pengeluaran</h1>
         <a href="{{ route('admin.pengeluaran.create') }}" class="w-full sm:w-auto inline-flex items-center justify-center rounded-xl bg-green-600 px-4 py-2.5 text-sm font-bold text-white shadow-[0_8px_20px_rgba(22,163,74,0.2)] hover:bg-green-700 transition-all active:scale-95">
             <i class="fa-solid fa-plus mr-2"></i> Tambah Pengeluaran
         </a>
+    </div>
+
+    {{-- FITUR BARU: FORM FILTER & EXPORT --}}
+    <div class="rounded-2xl border border-slate-100 bg-white p-4 sm:p-6 shadow-sm mb-6">
+        <form action="{{ route('admin.pengeluaran') }}" method="GET" class="flex flex-col md:flex-row gap-4 items-end">
+            <div class="w-full md:flex-1">
+                <label class="block text-[10px] sm:text-xs font-bold text-slate-400 uppercase mb-1.5">Pencarian</label>
+                <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari kategori atau keterangan..." class="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-400/20 transition-all">
+            </div>
+            
+            <div class="w-full md:w-auto">
+                <label class="block text-[10px] sm:text-xs font-bold text-slate-400 uppercase mb-1.5">Mulai Tanggal</label>
+                <input type="date" name="tgl_mulai" value="{{ request('tgl_mulai') }}" class="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-400/20 transition-all">
+            </div>
+            
+            <div class="w-full md:w-auto">
+                <label class="block text-[10px] sm:text-xs font-bold text-slate-400 uppercase mb-1.5">Sampai Tanggal</label>
+                <input type="date" name="tgl_selesai" value="{{ request('tgl_selesai') }}" class="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-400/20 transition-all">
+            </div>
+            
+            <div class="w-full md:w-auto flex flex-col sm:flex-row gap-2">
+                <a href="{{ route('admin.pengeluaran') }}" class="h-11 px-5 bg-slate-100 text-slate-500 rounded-xl hover:bg-slate-200 transition shadow-sm flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider w-full sm:w-auto">
+                    <i class="fa-solid fa-arrows-rotate"></i> Reset
+                </a>
+                <button type="submit" class="h-11 px-5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition shadow-lg flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider w-full sm:w-auto">
+                    <i class="fa-solid fa-magnifying-glass"></i> Filter
+                </button>
+                <button type="submit" name="export" value="excel" class="h-11 px-5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition shadow-lg flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider w-full sm:w-auto">
+                    <i class="fa-solid fa-file-excel"></i> Export
+                </button>
+            </div>
+        </form>
     </div>
 
     <div class="rounded-2xl border border-slate-100 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
@@ -21,7 +52,6 @@
             <table class="w-full text-left text-sm text-slate-600">
                 <thead class="bg-slate-50 text-xs uppercase text-slate-500 border-b border-slate-100">
                     <tr>
-                        {{-- REVISI: Penambahan whitespace-nowrap & min-w agar tabel scrollable dan rapi di mobile --}}
                         <th class="px-6 py-4 font-semibold text-center w-16 whitespace-nowrap">No</th>
                         <th class="px-6 py-4 font-semibold whitespace-nowrap min-w-[120px]">Tanggal</th>
                         <th class="px-6 py-4 font-semibold whitespace-nowrap min-w-[120px]">Kategori</th>
@@ -34,7 +64,7 @@
                     @forelse($pengeluarans as $item)
                     <tr class="hover:bg-slate-50/50 transition-colors">
                         <td class="px-6 py-4 font-bold text-slate-500 text-center">
-                            {{ $loop->iteration }}
+                            {{ ($pengeluarans->currentPage() - 1) * $pengeluarans->perPage() + $loop->iteration }}
                         </td>
                         
                         <td class="px-6 py-4 font-medium text-slate-900 whitespace-nowrap">
@@ -60,7 +90,6 @@
                         </td>
 
                         <td class="px-6 py-4 text-right">
-                            {{-- REVISI: flex-nowrap agar tombol Edit & Hapus tidak turun baris di mobile --}}
                             <div class="flex flex-nowrap items-center justify-end gap-2">
                                 {{-- FORM HAPUS --}}
                                 <form action="{{ route('admin.pengeluaran.destroy', $item->id) }}" method="POST" class="m-0 p-0 form-hapus">
@@ -81,19 +110,23 @@
                     @empty
                     <tr>
                         <td colspan="6" class="px-6 py-10 text-center text-slate-400">
-                            Belum ada data pengeluaran.
+                            Belum ada data pengeluaran untuk filter ini.
                         </td>
                     </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
+        
+        {{-- REVISI: Pagination --}}
+        <div class="p-6 border-t border-slate-100 bg-slate-50/30">
+            {{ $pengeluarans->appends(request()->query())->links() }}
+        </div>
     </div>
 @endsection
 
 @section('extra_js')
     <script>
-        // SCRIPT SWEETALERT KONFIRMASI HAPUS
         document.addEventListener('click', function (e) {
             if (e.target.closest('.btn-hapus')) {
                 const button = e.target.closest('.btn-hapus');
@@ -122,7 +155,6 @@
             }
         });
 
-        // SweetAlert Toast Notification
         @if(session('success'))
             Swal.fire({
                 icon: 'success',

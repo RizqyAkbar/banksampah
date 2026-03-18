@@ -15,7 +15,37 @@
 @endsection
 
 @section('content')
-<h1 class="font-heading text-2xl font-bold text-slate-900 mb-6 sm:hidden">Invoice</h1>
+    <h1 class="font-heading text-2xl font-bold text-slate-900 mb-6 sm:hidden">Invoice</h1>
+
+    {{-- FITUR BARU: FORM FILTER & EXPORT --}}
+    <div class="rounded-2xl border border-slate-100 bg-white p-4 sm:p-6 shadow-sm mb-6">
+        <form action="{{ route('admin.invoice_index') }}" method="GET" class="flex flex-col md:flex-row gap-4 items-end">
+            <div class="w-full md:flex-1">
+                <label class="block text-[10px] sm:text-xs font-bold text-slate-400 uppercase mb-1.5">Pencarian</label>
+                <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari invoice, pelanggan, armada..." class="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-400/20 transition-all">
+            </div>
+            <div class="w-full md:w-auto">
+                <label class="block text-[10px] sm:text-xs font-bold text-slate-400 uppercase mb-1.5">Mulai Tanggal</label>
+                <input type="date" name="tgl_mulai" value="{{ request('tgl_mulai') }}" class="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-400/20 transition-all">
+            </div>
+            <div class="w-full md:w-auto">
+                <label class="block text-[10px] sm:text-xs font-bold text-slate-400 uppercase mb-1.5">Sampai Tanggal</label>
+                <input type="date" name="tgl_selesai" value="{{ request('tgl_selesai') }}" class="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-400/20 transition-all">
+            </div>
+            <div class="w-full md:w-auto flex flex-col sm:flex-row gap-2">
+                <a href="{{ route('admin.invoice_index') }}" class="h-11 px-5 bg-slate-100 text-slate-500 rounded-xl hover:bg-slate-200 transition shadow-sm flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider w-full sm:w-auto">
+                    <i class="fa-solid fa-arrows-rotate"></i> Reset
+                </a>
+                <button type="submit" class="h-11 px-5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition shadow-lg flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider w-full sm:w-auto">
+                    <i class="fa-solid fa-magnifying-glass"></i> Filter
+                </button>
+                <button type="submit" name="export" value="excel" class="h-11 px-5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition shadow-lg flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider w-full sm:w-auto">
+                    <i class="fa-solid fa-file-excel"></i> Export
+                </button>
+            </div>
+        </form>
+    </div>
+
     <div class="rounded-2xl border border-slate-100 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
         <div class="p-6 border-b border-slate-100 bg-slate-50/50">
             <h2 class="text-lg font-bold text-slate-900">Daftar Order Pelanggan</h2>
@@ -26,23 +56,23 @@
             <table class="w-full text-left text-sm text-slate-600">
                 <thead class="bg-slate-50 text-xs uppercase text-slate-500 border-b border-slate-100">
                     <tr>
-                        <th class="px-6 py-4 font-semibold text-center w-16">No</th>
-                        <th class="px-6 py-4 font-semibold">Pelanggan & Alamat</th>
-                        <th class="px-6 py-4 font-semibold">Daftar Layanan</th>
-                        <th class="px-6 py-4 font-semibold">Total Tagihan</th>
-                        <th class="px-6 py-4 font-semibold text-center">Aksi</th>
+                        <th class="px-6 py-4 font-semibold text-center w-16 whitespace-nowrap">No</th>
+                        <th class="px-6 py-4 font-semibold whitespace-nowrap">Pelanggan & Alamat</th>
+                        <th class="px-6 py-4 font-semibold whitespace-nowrap">Daftar Layanan</th>
+                        <th class="px-6 py-4 font-semibold whitespace-nowrap">Total Tagihan</th>
+                        <th class="px-6 py-4 font-semibold text-center whitespace-nowrap">Aksi</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
                     @forelse($orders as $item)
                     <tr class="hover:bg-slate-50/50 transition-colors">
-                        <td class="px-6 py-4 text-center font-bold text-slate-400">{{ $loop->iteration }}</td>
-                        <td class="px-6 py-4">
+                        <td class="px-6 py-4 text-center font-bold text-slate-400">{{ ($orders->currentPage() - 1) * $orders->perPage() + $loop->iteration }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
                             <p class="font-bold text-slate-900 leading-tight">{{ $item->nama_pelanggan }}</p>
                             <p class="text-[11px] text-slate-400 mt-1 truncate max-w-[180px]">{{ $item->alamat }}</p>
                         </td>
-                        <td class="px-6 py-4">
-                            <div class="flex flex-wrap gap-2 max-w-[300px]">
+                        <td class="px-6 py-4 min-w-[250px]">
+                            <div class="flex flex-wrap gap-2">
                                 @foreach($item->items->where('status_item', 'Aktif') as $service)
                                     <span class="inline-flex flex-col bg-slate-100 border border-slate-200 px-2.5 py-1.5 rounded-lg min-w-[120px]">
                                         <span class="text-[10px] font-bold text-slate-800 leading-none mb-1">{{ $service->jenis_layanan }}</span>
@@ -51,20 +81,20 @@
                                 @endforeach
                             </div>
                         </td>
-                        <td class="px-6 py-4">
+                        <td class="px-6 py-4 whitespace-nowrap">
                             <span class="font-bold text-green-600">Rp {{ number_format($item->total_pendapatan, 0, ',', '.') }}</span>
                         </td>
-                        <td class="px-6 py-4">
+                        <td class="px-6 py-4 whitespace-nowrap">
                             <div class="flex items-center justify-center gap-2">
-                                <button type="button" @click="openModal({{ $item->id }})" class="p-2 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-900 hover:text-white transition-all shadow-sm">
+                                <button type="button" @click="openModal({{ $item->id }})" class="p-2 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-900 hover:text-white transition-all shadow-sm" title="Preview">
                                     <i class="fa-solid fa-eye text-sm"></i>
                                 </button>
                                 
-                                <a href="{{ route('admin.invoice.print', $item->id) }}" target="_blank" class="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all shadow-sm">
+                                <a href="{{ route('admin.invoice.print', $item->id) }}" target="_blank" class="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all shadow-sm" title="PDF">
                                     <i class="fa-solid fa-file-pdf text-sm"></i>
                                 </a>
 
-                                <button type="button" @click="downloadInvoice({{ $item->id }})" class="p-2 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-900 hover:text-white transition-all shadow-sm">
+                                <button type="button" @click="downloadInvoice({{ $item->id }})" class="p-2 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-900 hover:text-white transition-all shadow-sm" title="Print/Download">
                                     <i class="fa-solid fa-print text-sm"></i>
                                 </button>
 
@@ -78,13 +108,13 @@
                                     $pesanWA .= "Terima kasih atas kepercayaan Anda.";
                                 @endphp
 
-                                <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $item->no_wa) }}?text={{ urlencode($pesanWA) }}" target="_blank" class="p-2 rounded-lg bg-green-50 text-green-600 hover:bg-green-600 hover:text-white transition-all shadow-sm">
+                                <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $item->no_wa) }}?text={{ urlencode($pesanWA) }}" target="_blank" class="p-2 rounded-lg bg-green-50 text-green-600 hover:bg-green-600 hover:text-white transition-all shadow-sm" title="Kirim WA">
                                     <i class="fa-brands fa-whatsapp text-sm"></i>
                                 </a>
 
                                 <form action="{{ route('admin.rekap_order.destroy', $item->id) }}" method="POST" class="m-0 p-0 form-hapus">
                                     @csrf @method('DELETE')
-                                    <button type="button" class="btn-hapus p-2 rounded-lg bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-sm">
+                                    <button type="button" class="btn-hapus p-2 rounded-lg bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-sm" title="Hapus">
                                         <i class="fa-solid fa-trash-can text-sm"></i>
                                     </button>
                                 </form>
@@ -92,7 +122,7 @@
                         </td>
                     </tr>
                     @empty
-                    <tr><td colspan="5" class="px-6 py-12 text-center text-slate-400 italic">Belum ada data tagihan.</td></tr>
+                    <tr><td colspan="5" class="px-6 py-12 text-center text-slate-400 italic">Belum ada data tagihan yang sesuai filter.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -156,7 +186,7 @@
             </template>
         </div>
         <div class="p-6 border-t border-slate-100 bg-slate-50/30">
-            {{ $orders->links() }}
+            {{ $orders->appends(request()->query())->links() }}
         </div>
     </div>
 @endsection
@@ -191,26 +221,22 @@
                     let url = "{{ route('admin.invoice.print', ':id') }}?mode=download";
                     url = url.replace(':id', id);
                     
-                    // Bersihkan iframe lama
                     const oldIframe = document.getElementById('pdf-iframe');
                     if (oldIframe) oldIframe.remove();
 
-                    // KUNCI PERBAIKAN: JANGAN pakai display: none. 
-                    // Kita geser keluar layar agar browser tetap me-render isinya.
                     const iframe = document.createElement('iframe');
                     iframe.id = 'pdf-iframe';
                     iframe.style.position = 'fixed';
                     iframe.style.right = '-9999px';
                     iframe.style.bottom = '-9999px';
-                    iframe.style.width = '1024px'; // Wajib ada ukuran
-                    iframe.style.height = '100vh'; // Wajib ada ukuran
+                    iframe.style.width = '1024px'; 
+                    iframe.style.height = '100vh'; 
                     iframe.style.opacity = '0';
                     iframe.style.pointerEvents = 'none';
                     iframe.src = url;
                     
                     document.body.appendChild(iframe);
 
-                    // Dengarkan pesan dari iframe jika download sudah selesai
                     const messageListener = function(event) {
                         if (event.data === 'download_complete') {
                             Swal.close();
@@ -225,7 +251,6 @@
                     };
                     window.addEventListener('message', messageListener);
                     
-                    // Fallback jika terjadi error terlalu lama
                     setTimeout(() => {
                         if (Swal.isVisible()) {
                             Swal.close();

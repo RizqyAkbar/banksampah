@@ -6,6 +6,33 @@
 @section('content')
     <h1 class="font-heading text-2xl font-bold text-slate-900 mb-6 sm:hidden">Rekap Order</h1>
 
+    {{-- FITUR BARU: FORM FILTER & EXPORT --}}
+    <div class="rounded-2xl border border-slate-100 bg-white p-4 sm:p-6 shadow-sm mb-6">
+        <form action="{{ route('admin.rekap_order') }}" method="GET" class="flex flex-col md:flex-row gap-4 items-end">
+            <div class="w-full md:flex-1">
+                <label class="block text-[10px] sm:text-xs font-bold text-slate-400 uppercase mb-1.5">Pencarian</label>
+                <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari nama, WA, armada..." class="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-400/20 transition-all">
+            </div>
+            <div class="w-full md:w-auto">
+                <label class="block text-[10px] sm:text-xs font-bold text-slate-400 uppercase mb-1.5">Mulai Tanggal</label>
+                <input type="date" name="tgl_mulai" value="{{ request('tgl_mulai') }}" class="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-400/20 transition-all">
+            </div>
+            <div class="w-full md:w-auto">
+                <label class="block text-[10px] sm:text-xs font-bold text-slate-400 uppercase mb-1.5">Sampai Tanggal</label>
+                <input type="date" name="tgl_selesai" value="{{ request('tgl_selesai') }}" class="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-400/20 transition-all">
+            </div>
+            <div class="w-full md:w-auto flex flex-col sm:flex-row gap-2">
+                <button type="submit" class="h-11 px-5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition shadow-lg flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider w-full sm:w-auto">
+                    <i class="fa-solid fa-magnifying-glass"></i> Filter
+                </button>
+                {{-- Tombol Export akan mengirimkan value "excel" untuk ditangkap oleh Controller --}}
+                <button type="submit" name="export" value="excel" class="h-11 px-5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition shadow-lg flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider w-full sm:w-auto">
+                    <i class="fa-solid fa-file-excel"></i> Export
+                </button>
+            </div>
+        </form>
+    </div>
+
     <div class="rounded-2xl border border-slate-100 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
         <div class="p-6 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row sm:justify-between items-start sm:items-center gap-2 sm:gap-0">
             <h2 class="text-lg font-bold text-slate-900">Daftar Order Aktif</h2>
@@ -20,7 +47,6 @@
                         <th class="px-6 py-4 font-semibold whitespace-nowrap min-w-[140px]">Tgl Penjadwalan</th>
                         <th class="px-6 py-4 font-semibold whitespace-nowrap min-w-[220px]">Pelanggan & Lokasi</th>
                         <th class="px-6 py-4 font-semibold text-center whitespace-nowrap min-w-[100px]">Status</th>
-                        {{-- REVISI: Ukuran min-width disesuaikan karena isinya sudah dipindah ke modal --}}
                         <th class="px-6 py-4 font-semibold whitespace-nowrap min-w-[180px]">Layanan & Detail</th>
                         <th class="px-6 py-4 font-semibold whitespace-nowrap min-w-[150px]">Pendapatan</th>
                         <th class="px-6 py-4 font-semibold text-right whitespace-nowrap min-w-[120px]">Aksi Utama</th>
@@ -29,7 +55,7 @@
                 <tbody class="divide-y divide-slate-100">
                     @forelse($orders as $item)
                     <tr class="hover:bg-slate-50/50 transition-colors">
-                        <td class="px-6 py-4 font-bold text-slate-500 text-center">{{ $loop->iteration }}</td>
+                        <td class="px-6 py-4 font-bold text-slate-500 text-center">{{ ($orders->currentPage() - 1) * $orders->perPage() + $loop->iteration }}</td>
                         
                         <td class="px-6 py-4 font-medium text-slate-900 whitespace-nowrap">
                             {{ \Carbon\Carbon::parse($item->penjadwalan)->format('d M Y') }}
@@ -66,7 +92,6 @@
                             @endif
                         </td>
 
-                        {{-- REVISI: Bagian ini dipersingkat dan dipindah ke Modal --}}
                         <td class="px-6 py-4">
                             <div class="flex flex-col items-start gap-1.5 min-w-[150px]">
                                 @foreach($item->items->where('status_item', 'Aktif') as $index => $service)
@@ -109,14 +134,14 @@
                         </td>
                     </tr>
                     @empty
-                    <tr><td colspan="7" class="px-6 py-10 text-center text-slate-400 italic">Belum ada data order aktif untuk ditampilkan.</td></tr>
+                    <tr><td colspan="7" class="px-6 py-10 text-center text-slate-400 italic">Belum ada data order untuk filter ini.</td></tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
 
         <div class="p-6 border-t border-slate-100 bg-slate-50/30">
-            {{ $orders->links() }}
+            {{ $orders->appends(request()->query())->links() }}
         </div>
     </div>
 
@@ -126,7 +151,7 @@
         <input type="hidden" name="alasan_cancel" id="input-item-alasan">
     </form>
 
-    {{-- REVISI: MODAL DETAIL ARMADA DIBUAT DILUAR TABEL --}}
+    {{-- MODAL DETAIL ARMADA --}}
     @foreach($orders as $item)
     <div id="modalDetail-{{ $item->id }}" class="fixed inset-0 z-[60] hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl sm:rounded-3xl shadow-xl max-w-lg w-full overflow-hidden animate-in zoom-in duration-200 flex flex-col max-h-[90vh]">
@@ -238,15 +263,14 @@
 
 @section('extra_js')
     <script>
-        // REVISI: Fungsi Javascript Buka & Tutup Modal
         function openModalDetail(id) {
             document.getElementById('modalDetail-' + id).classList.remove('hidden');
-            document.body.style.overflow = 'hidden'; // Kunci scroll background
+            document.body.style.overflow = 'hidden';
         }
 
         function closeModalDetail(id) {
             document.getElementById('modalDetail-' + id).classList.add('hidden');
-            document.body.style.overflow = 'auto'; // Kembalikan scroll
+            document.body.style.overflow = 'auto';
         }
 
         function confirmCancelItem(itemId, layananName) {
@@ -254,7 +278,7 @@
                 title: 'Batalkan Layanan?',
                 text: `Alasan pembatalan ${layananName}:`,
                 input: 'textarea',
-                inputPlaceholder: 'Contoh: Sopir berhalangan / Lokasi tidak terjangkau...',
+                inputPlaceholder: 'Contoh: Sopir berhalangan...',
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#f97316', 
@@ -301,14 +325,6 @@
                     form.submit();
                 }
             });
-        }
-
-        function confirmRestoreItem(itemId) {
-            const form = document.getElementById('form-item-action');
-            form.action = `/admin/order-item/${itemId}/restore`;
-            let methodInput = form.querySelector('input[name="_method"]');
-            if (methodInput) methodInput.value = 'PUT';
-            form.submit();
         }
 
         document.addEventListener('click', function (e) {

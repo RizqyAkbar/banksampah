@@ -6,6 +6,44 @@
 @section('content')
     <h1 class="font-heading text-2xl font-bold text-slate-900 mb-6 sm:hidden">Pembayaran</h1>
 
+    {{-- FITUR BARU: FORM FILTER & EXPORT --}}
+    <div class="rounded-2xl border border-slate-100 bg-white p-4 sm:p-6 shadow-sm mb-6">
+        <form action="{{ route('admin.payment_index') }}" method="GET" class="flex flex-col md:flex-row gap-4 items-end">
+            <div class="w-full md:flex-1">
+                <label class="block text-[10px] sm:text-xs font-bold text-slate-400 uppercase mb-1.5">Pencarian</label>
+                <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari pelanggan, invoice, atau metode bayar..." class="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-400/20 transition-all">
+            </div>
+            
+            <div class="w-full md:w-auto">
+                <label class="block text-[10px] sm:text-xs font-bold text-slate-400 uppercase mb-1.5">Mulai Tanggal</label>
+                {{-- Kita filter berdasarkan penjadwalan order --}}
+                <input type="date" name="tgl_mulai" value="{{ request('tgl_mulai') }}" class="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-400/20 transition-all">
+            </div>
+            
+            <div class="w-full md:w-auto">
+                <label class="block text-[10px] sm:text-xs font-bold text-slate-400 uppercase mb-1.5">Sampai Tanggal</label>
+                <input type="date" name="tgl_selesai" value="{{ request('tgl_selesai') }}" class="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-400/20 transition-all">
+            </div>
+            
+            {{-- Pertahankan parameter filter status jika ada (Lunas/Belum Lunas) --}}
+            @if(request('filter'))
+                <input type="hidden" name="filter" value="{{ request('filter') }}">
+            @endif
+
+            <div class="w-full md:w-auto flex flex-col sm:flex-row gap-2">
+                <a href="{{ route('admin.payment_index') }}" class="h-11 px-5 bg-slate-100 text-slate-500 rounded-xl hover:bg-slate-200 transition shadow-sm flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider w-full sm:w-auto">
+                    <i class="fa-solid fa-arrows-rotate"></i> Reset
+                </a>
+                <button type="submit" class="h-11 px-5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition shadow-lg flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider w-full sm:w-auto">
+                    <i class="fa-solid fa-magnifying-glass"></i> Filter
+                </button>
+                <button type="submit" name="export" value="excel" class="h-11 px-5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition shadow-lg flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider w-full sm:w-auto">
+                    <i class="fa-solid fa-file-excel"></i> Export
+                </button>
+            </div>
+        </form>
+    </div>
+
     <div class="rounded-2xl border border-slate-100 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden" x-data="{ isModalOpen: false, selectedOrder: { total_pendapatan: 0, jumlah_dibayar: 0, nama_pelanggan: '', catatan_pembayaran: '', metode_pembayaran: '' } }">
         <div class="p-6 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row sm:justify-between items-start sm:items-center gap-4">
             <div>
@@ -13,7 +51,7 @@
                 <p class="text-xs text-slate-500 mt-1">Pantau pelunasan tagihan pelanggan secara realtime.</p>
             </div>
 
-            {{-- TOMBOL FILTER KHUSUS --}}
+            {{-- TOMBOL FILTER KHUSUS STATUS --}}
             <div class="flex flex-wrap gap-2 w-full sm:w-auto">
                 <a href="{{ route('admin.payment_index') }}" class="px-4 py-2 text-xs font-bold rounded-xl border {{ !request('filter') ? 'bg-slate-900 text-white' : 'bg-white text-slate-600' }}">Semua</a>
                 <a href="{{ route('admin.payment_index', ['filter' => 'lunas']) }}" class="px-4 py-2 text-xs font-bold rounded-xl border {{ request('filter') == 'lunas' ? 'bg-emerald-600 text-white' : 'bg-white text-emerald-600 border-emerald-100' }}">Lunas</a>
@@ -25,24 +63,24 @@
             <table class="w-full text-left text-sm text-slate-600">
                 <thead class="bg-slate-50 text-xs uppercase text-slate-500 border-b border-slate-100">
                     <tr>
-                        <th class="px-6 py-4 font-semibold text-center w-16">No</th>
-                        <th class="px-6 py-4 font-semibold">Pelanggan</th>
-                        <th class="px-6 py-4 font-semibold text-center">Status</th>
-                        <th class="px-6 py-4 font-semibold">Total Tagihan</th>
-                        <th class="px-6 py-4 font-semibold text-emerald-600">Sudah Bayar</th>
-                        <th class="px-6 py-4 font-semibold text-rose-600">Sisa Hutang</th>
-                        <th class="px-6 py-4 font-semibold">Metode & Tgl Pelunasan</th>
-                        <th class="px-6 py-4 font-semibold text-right">Aksi</th>
+                        <th class="px-6 py-4 font-semibold text-center w-16 whitespace-nowrap">No</th>
+                        <th class="px-6 py-4 font-semibold whitespace-nowrap">Pelanggan</th>
+                        <th class="px-6 py-4 font-semibold text-center whitespace-nowrap">Status</th>
+                        <th class="px-6 py-4 font-semibold whitespace-nowrap">Total Tagihan</th>
+                        <th class="px-6 py-4 font-semibold text-emerald-600 whitespace-nowrap">Sudah Bayar</th>
+                        <th class="px-6 py-4 font-semibold text-rose-600 whitespace-nowrap">Sisa Hutang</th>
+                        <th class="px-6 py-4 font-semibold whitespace-nowrap">Metode & Tgl Pelunasan</th>
+                        <th class="px-6 py-4 font-semibold text-right whitespace-nowrap">Aksi</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
                     @forelse($orders as $item)
                     <tr class="hover:bg-slate-50/50 transition-colors">
-                        <td class="px-6 py-4 text-center font-bold text-slate-400">{{ $loop->iteration }}</td>
-                        <td class="px-6 py-4">
+                        <td class="px-6 py-4 text-center font-bold text-slate-400">{{ ($orders->currentPage() - 1) * $orders->perPage() + $loop->iteration }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
                             <p class="font-bold text-slate-900">{{ $item->nama_pelanggan }}</p>
                         </td>
-                        <td class="px-6 py-4 text-center">
+                        <td class="px-6 py-4 text-center whitespace-nowrap">
                             @php
                                 $color = 'bg-rose-50 text-rose-600 border-rose-100';
                                 if($item->status_pembayaran == 'Lunas') $color = 'bg-emerald-50 text-emerald-600 border-emerald-100';
@@ -57,7 +95,7 @@
                         <td class="px-6 py-4 font-bold text-emerald-600 whitespace-nowrap">Rp {{ number_format($item->jumlah_dibayar, 0, ',', '.') }}</td>
                         <td class="px-6 py-4 font-bold text-rose-600 whitespace-nowrap">Rp {{ number_format($item->total_pendapatan - $item->jumlah_dibayar, 0, ',', '.') }}</td>
                         
-                        <td class="px-6 py-4">
+                        <td class="px-6 py-4 whitespace-nowrap">
                             <div class="flex flex-col gap-1">
                                 <span class="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
                                     <i class="fa-solid fa-credit-card text-slate-400"></i>
@@ -74,12 +112,12 @@
                                 @endif
 
                                 @if($item->tanggal_pelunasan)
-                                    <span class="text-[10px] text-slate-400 flex items-center gap-1.5">
+                                    <span class="text-[10px] text-slate-400 flex items-center gap-1.5 mt-1">
                                         <i class="fa-solid fa-calendar-check text-slate-300"></i>
                                         {{ \Carbon\Carbon::parse($item->tanggal_pelunasan)->format('d M Y') }}
                                     </span>
                                 @else
-                                    <span class="text-[10px] text-rose-400 italic flex items-center gap-1.5">
+                                    <span class="text-[10px] text-rose-400 italic flex items-center gap-1.5 mt-1">
                                         <i class="fa-solid fa-hourglass-start text-[9px]"></i>
                                         Belum Lunas
                                     </span>
@@ -87,21 +125,21 @@
                             </div>
                         </td>
 
-                        <td class="px-6 py-4 text-right">
+                        <td class="px-6 py-4 text-right whitespace-nowrap">
                             <button @click="isModalOpen = true; selectedOrder = {{ json_encode($item) }}" class="inline-flex items-center justify-center rounded-lg bg-green-50 text-green-700 px-3 py-1.5 text-xs font-bold hover:bg-green-600 hover:text-white transition-colors shadow-sm whitespace-nowrap">
                                 <i class="fa-solid fa-wallet mr-2"></i> Update Bayar
                             </button>
                         </td>
                     </tr>
                     @empty
-                    <tr><td colspan="8" class="px-6 py-12 text-center text-slate-400 italic">Belum ada data pembayaran yang masuk.</td></tr>
+                    <tr><td colspan="8" class="px-6 py-12 text-center text-slate-400 italic">Belum ada data pembayaran untuk filter ini.</td></tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
 
         <div class="p-6 border-t border-slate-100 bg-slate-50/30">
-            {{ $orders->links() }}
+            {{ $orders->appends(request()->query())->links() }}
         </div>
 
         {{-- MODAL UPDATE PEMBAYARAN REVISI RESPONSIVE (TANPA SCROLL) --}}

@@ -39,10 +39,72 @@ class PengeluaranController extends Controller
         return redirect()->route('admin.pengeluaran')->with('success', 'Pengeluaran berhasil dicatat!');
     }
 
-    public function index()
+    // REVISI: Menampilkan halaman list Pengeluaran (Dengan Filter dan Export Excel)
+    public function index(Request $request)
     {
-        $pengeluarans = Pengeluaran::orderBy('tanggal', 'desc')->get();
-        // Pastikan nama view sesuai dengan file tabel kamu (admin/pengeluaran.blade.php)
+        $query = Pengeluaran::query();
+
+        // --- LOGIKA PENCARIAN (Search) ---
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('kategori', 'LIKE', "%$search%")
+                  ->orWhere('keterangan', 'LIKE', "%$search%");
+            });
+        }
+
+        // --- LOGIKA FILTER TANGGAL (Date Range) ---
+        if ($request->filled('tgl_mulai') && $request->filled('tgl_selesai')) {
+            $query->whereBetween('tanggal', [$request->tgl_mulai, $request->tgl_selesai]);
+        }
+
+        // --- LOGIKA EXPORT EXCEL (CSV Format) ---
+        if ($request->has('export') && $request->export == 'excel') {
+            $pengeluaranExport = $query->orderBy('tanggal', 'desc')->get();
+            $filename = "Rekap_Pengeluaran_" . date('Ymd_His') . ".csv";
+            
+            $headers = [
+                "Content-type"        => "text/csv",
+                "Content-Disposition" => "attachment; filename=$filename",
+                "Pragma"              => "no-cache",
+                "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+                "Expires"             => "0"
+            ];
+
+            $columns = [
+                'No', 'Tanggal', 'Kategori', 'Keterangan', 'Nominal (Rp)'
+            ];
+
+            $callback = function() use($pengeluaranExport, $columns) {
+                $file = fopen('php://output', 'w');
+                // Menambahkan BOM agar Microsoft Excel bisa membaca karakter UTF-8 dengan baik
+                fputs($file, $bom = (chr(0xEF) . chr(0xBB) . chr(0xBF))); 
+                fputcsv($file, $columns); 
+
+                foreach ($pengeluaranExport as $index => $item) {
+                    $row['No'] = $index + 1;
+                    $row['Tanggal'] = \Carbon\Carbon::parse($item->tanggal)->format('Y-m-d');
+                    $row['Kategori'] = $item->kategori;
+                    $row['Keterangan'] = $item->keterangan ?? '-';
+                    $row['Nominal (Rp)'] = $item->nominal;
+
+                    fputcsv($file, array(
+                        $row['No'], $row['Tanggal'], $row['Kategori'], 
+                        $row['Keterangan'], $row['Nominal (Rp)']
+                    ));
+                }
+                fclose($file);
+            };
+
+            return response()->stream($callback, 200, $headers);
+        }
+
+        // --- TAMPILAN VIEW NORMAL (MENGGUNAKAN PAGINATE) ---
+        $pengeluarans = $query->orderBy('tanggal', 'desc')->paginate(15);
+        
+        // Mempertahankan query string (filter/search) pada link pagination
+        $pengeluarans->appends($request->all()); 
+
         return view('admin.pengeluaran', compact('pengeluarans'));
     }
 

@@ -40,7 +40,7 @@ class OrderController extends Controller
         $noWaFinal = '62' . $nomorBersih;
 
         $tanggalFormat = date('Ymd');
-        
+
         // Logika Nomor Invoice Unik
         $lastOrderToday = Order::whereDate('created_at', Carbon::today())->latest()->first();
         if ($lastOrderToday && $lastOrderToday->no_invoice) {
@@ -49,7 +49,7 @@ class OrderController extends Controller
         } else {
             $nextIncrement = 1;
         }
-        
+
         $nomorUrut = str_pad($nextIncrement, 3, '0', STR_PAD_LEFT);
         $noInvoiceFinal = "INV-$tanggalFormat-$nomorUrut";
 
@@ -73,19 +73,19 @@ class OrderController extends Controller
         foreach ($request->layanan as $index => $jenisLayanan) {
             // Backup logic: Jika armada null dari request, coba cari di master
             $armadaFinal = $request->armada[$index];
-            
+
             if (empty($armadaFinal)) {
                 $service = Service::where('nama_layanan', $jenisLayanan)->first();
                 $armadaFinal = $service ? $service->armada : 'Umum'; // Fallback ke 'Umum' jika benar-benar tidak ada
             }
 
-            $namaJasaFinal = ($jenisLayanan === 'LAINNYA') 
-                ? ($request->layanan_manual[$index] ?? 'Jasa Tidak Diketahui') 
+            $namaJasaFinal = ($jenisLayanan === 'LAINNYA')
+                ? ($request->layanan_manual[$index] ?? 'Jasa Tidak Diketahui')
                 : $jenisLayanan;
-        
+
             $hpp = $request->harga_dasar[$index] ?? 0;
             $harga = $request->harga_jual[$index] ?? 0;
-        
+
             $order->items()->create([
                 'jenis_layanan' => $namaJasaFinal,
                 'armada'        => $armadaFinal, // Menggunakan variabel yang sudah dicek
@@ -98,21 +98,97 @@ class OrderController extends Controller
         return redirect()->back()->with('success', 'Order baru berhasil disimpan dengan nomor ' . $noInvoiceFinal);
     }
 
-    // 3. Halaman REKAP ORDER
-    public function index()
+    // 3. Halaman REKAP ORDER (DENGAN FITUR SEARCH, FILTER TANGGAL & EXPORT)
+    public function index(Request $request)
     {
-        // Kita ambil Order, tapi hanya sertakan Items yang statusnya 'Aktif'
-        $orders = Order::with(['items' => function($query) {
+        // Inisialisasi query
+        $query = Order::with(['items' => function ($query) {
                 $query->where('status_item', 'Aktif');
             }])
             ->where('status_order', 'Aktif')
-            // Pastikan order yang ditampilkan punya minimal 1 item aktif 
-            // (Atau hilangkan whereHas jika ingin tetap muncul nota kosongnya)
-            ->whereHas('items', function($query) {
+            ->whereHas('items', function ($query) {
                 $query->where('status_item', 'Aktif');
-            })
-            ->orderBy('created_at', 'desc')
-            ->paginate(10);
+            });
+
+        // --- LOGIKA PENCARIAN (Search) ---
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('nama_pelanggan', 'LIKE', "%$search%")
+                  ->orWhere('no_wa', 'LIKE', "%$search%")
+                  ->orWhere('alamat', 'LIKE', "%$search%")
+                  ->orWhere('no_invoice', 'LIKE', "%$search%")
+                  ->orWhereHas('items', function ($sq) use ($search) {
+                      $sq->where('nama_sopir', 'LIKE', "%$search%")
+                         ->orWhere('jenis_layanan', 'LIKE', "%$search%")
+                         ->orWhere('plat_armada', 'LIKE', "%$search%");
+                  });
+            });
+        }
+
+        // --- LOGIKA FILTER TANGGAL (Date Range) ---
+        if ($request->filled('tgl_mulai') && $request->filled('tgl_selesai')) {
+            $query->whereBetween('penjadwalan', [$request->tgl_mulai, $request->tgl_selesai]);
+        }
+
+        // --- LOGIKA EXPORT EXCEL (CSV Format) ---
+        // Jika tombol Export diklik (membawa request export=excel)
+        if ($request->has('export') && $request->export == 'excel') {
+            $ordersExport = $query->orderBy('penjadwalan', 'desc')->get();
+            $filename = "Data_Rekap_Order_" . date('Ymd_His') . ".csv";
+            
+            $headers = [
+                "Content-type"        => "text/csv",
+                "Content-Disposition" => "attachment; filename=$filename",
+                "Pragma"              => "no-cache",
+                "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+                "Expires"             => "0"
+            ];
+
+            $columns = [
+                'No', 'No. Invoice', 'Tgl Penjadwalan', 'Nama Pelanggan', 
+                'No. WhatsApp', 'Alamat', 'Pendapatan', 'Layanan & Armada'
+            ];
+
+            $callback = function() use($ordersExport, $columns) {
+                $file = fopen('php://output', 'w');
+                // Menambahkan BOM agar Microsoft Excel bisa membaca karakter UTF-8 dengan baik
+                fputs($file, $bom = (chr(0xEF) . chr(0xBB) . chr(0xBF))); 
+                fputcsv($file, $columns); // Tulis baris Header
+
+                foreach ($ordersExport as $index => $order) {
+                    $layananDetail = [];
+                    foreach($order->items as $item) {
+                        // Kumpulkan detail layanan
+                        $layananDetail[] = $item->jenis_layanan . " (" . $item->armada . " - " . $item->jumlah_rit . " Rit)";
+                    }
+                    $layananStr = implode(" | ", $layananDetail); // Digabung jadi 1 text
+
+                    $row['No'] = $index + 1;
+                    $row['No. Invoice'] = $order->no_invoice;
+                    $row['Tgl Penjadwalan'] = \Carbon\Carbon::parse($order->penjadwalan)->format('Y-m-d');
+                    $row['Nama Pelanggan'] = $order->nama_pelanggan;
+                    $row['No. WhatsApp'] = "+" . $order->no_wa; // Tambah simbol + agar tidak jadi rumus di Excel
+                    $row['Alamat'] = $order->alamat;
+                    $row['Pendapatan'] = $order->total_pendapatan;
+                    $row['Layanan & Armada'] = $layananStr;
+
+                    // Tulis isi ke CSV
+                    fputcsv($file, array(
+                        $row['No'], $row['No. Invoice'], $row['Tgl Penjadwalan'], 
+                        $row['Nama Pelanggan'], $row['No. WhatsApp'], $row['Alamat'], 
+                        $row['Pendapatan'], $row['Layanan & Armada']
+                    ));
+                }
+                fclose($file);
+            };
+
+            return response()->stream($callback, 200, $headers);
+        }
+
+        // --- TAMPILAN VIEW NORMAL JIKA TIDAK DI EXPORT ---
+        $orders = $query->orderBy('created_at', 'desc')->paginate(10);
+        $orders->appends($request->all()); // Mempertahankan parameter filter saat pindah page
 
         return view('admin.rekap_order', compact('orders'));
     }
@@ -151,8 +227,8 @@ class OrderController extends Controller
 
             // Logika Jasa Lainnya
             $jenisLayananInput = $request->jenis_layanan[$index];
-            $jenisLayananFinal = ($jenisLayananInput === 'LAINNYA') 
-                ? ($request->layanan_manual[$index] ?? $item->jenis_layanan) 
+            $jenisLayananFinal = ($jenisLayananInput === 'LAINNYA')
+                ? ($request->layanan_manual[$index] ?? $item->jenis_layanan)
                 : $jenisLayananInput;
 
             $isArmadaChanged = ($armadaLama != $request->armada[$index]);
@@ -163,8 +239,8 @@ class OrderController extends Controller
 
             // 1. Armada atau Layanan berubah? Catat!
             if ($isArmadaChanged || $isLayananChanged) {
-                if($isLayananChanged) $changes[] = "Jasa [$layananLama] -> [$jenisLayananFinal]";
-                if($isArmadaChanged) $changes[] = "Armada [$armadaLama] -> [{$request->armada[$index]}]";
+                if ($isLayananChanged) $changes[] = "Jasa [$layananLama] -> [$jenisLayananFinal]";
+                if ($isArmadaChanged) $changes[] = "Armada [$armadaLama] -> [{$request->armada[$index]}]";
             }
 
             // 2. Sopir berubah dan data lama tidak kosong? Catat!
@@ -238,14 +314,95 @@ class OrderController extends Controller
         return redirect()->route('admin.rekap_order')->with('success', 'Data Rekap Berhasil diperbarui!');
     }
 
-    public function invoiceIndex() {
-        $orders = Order::where('total_pendapatan', '>', 0)->where('status_order', 'Aktif')->orderBy('updated_at', 'desc')->paginate(10);
+    // REVISI: Penambahan logika search, filter tanggal, dan export excel untuk Invoice Index
+    public function invoiceIndex(Request $request)
+    {
+        $query = Order::with(['items' => function ($query) {
+            $query->where('status_item', 'Aktif');
+        }])
+        ->where('status_order', 'Aktif')
+        ->where('total_pendapatan', '>', 0); // Hanya yang sudah ada tagihannya
+
+        // --- LOGIKA PENCARIAN (Search) ---
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('nama_pelanggan', 'LIKE', "%$search%")
+                  ->orWhere('no_wa', 'LIKE', "%$search%")
+                  ->orWhere('no_invoice', 'LIKE', "%$search%")
+                  ->orWhereHas('items', function ($sq) use ($search) {
+                      $sq->where('jenis_layanan', 'LIKE', "%$search%")
+                         ->orWhere('armada', 'LIKE', "%$search%");
+                  });
+            });
+        }
+
+        // --- LOGIKA FILTER TANGGAL (Date Range) ---
+        if ($request->filled('tgl_mulai') && $request->filled('tgl_selesai')) {
+            $query->whereBetween('penjadwalan', [$request->tgl_mulai, $request->tgl_selesai]);
+        }
+
+        // --- LOGIKA EXPORT EXCEL (CSV Format) ---
+        if ($request->has('export') && $request->export == 'excel') {
+            $ordersExport = $query->orderBy('penjadwalan', 'desc')->get();
+            $filename = "Daftar_Invoice_Pelanggan_" . date('Ymd_His') . ".csv";
+            
+            $headers = [
+                "Content-type"        => "text/csv",
+                "Content-Disposition" => "attachment; filename=$filename",
+                "Pragma"              => "no-cache",
+                "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+                "Expires"             => "0"
+            ];
+
+            $columns = [
+                'No', 'No. Invoice', 'Tanggal Penjadwalan', 'Nama Pelanggan', 
+                'No. WhatsApp', 'Daftar Layanan & Detail', 'Total Tagihan'
+            ];
+
+            $callback = function() use($ordersExport, $columns) {
+                $file = fopen('php://output', 'w');
+                fputs($file, $bom = (chr(0xEF) . chr(0xBB) . chr(0xBF))); 
+                fputcsv($file, $columns); 
+
+                foreach ($ordersExport as $index => $order) {
+                    $layananDetail = [];
+                    foreach($order->items->where('status_item', 'Aktif') as $item) {
+                        $layananDetail[] = $item->jenis_layanan . " (" . $item->armada . " - " . $item->jumlah_rit . " Rit)";
+                    }
+                    $layananStr = implode(" | ", $layananDetail); 
+
+                    $row['No'] = $index + 1;
+                    $row['No. Invoice'] = $order->no_invoice;
+                    $row['Tanggal Penjadwalan'] = \Carbon\Carbon::parse($order->penjadwalan)->format('Y-m-d');
+                    $row['Nama Pelanggan'] = $order->nama_pelanggan;
+                    $row['No. WhatsApp'] = "+" . $order->no_wa; 
+                    $row['Daftar Layanan & Detail'] = $layananStr;
+                    $row['Total Tagihan'] = $order->total_pendapatan;
+
+                    fputcsv($file, array(
+                        $row['No'], $row['No. Invoice'], $row['Tanggal Penjadwalan'], 
+                        $row['Nama Pelanggan'], $row['No. WhatsApp'], $row['Daftar Layanan & Detail'], 
+                        $row['Total Tagihan']
+                    ));
+                }
+                fclose($file);
+            };
+
+            return response()->stream($callback, 200, $headers);
+        }
+
+        // --- TAMPILAN VIEW NORMAL ---
+        $orders = $query->orderBy('updated_at', 'desc')->paginate(10);
+        $orders->appends($request->all());
+
         return view('admin.invoice_index', compact('orders'));
     }
 
     // REVISI: Fungsi Detail untuk Modal Preview
-    public function getDetail($id) {
-        $order = Order::with(['items' => function($query) {
+    public function getDetail($id)
+    {
+        $order = Order::with(['items' => function ($query) {
             $query->where('status_item', 'Aktif');
         }])->findOrFail($id);
 
@@ -258,49 +415,129 @@ class OrderController extends Controller
     }
 
     // REVISI: Fungsi Print Invoice (Sesuai Desain PDF)
-    public function invoicePrint($id) {
-        $order = Order::with(['items' => function($query) {
+    public function invoicePrint($id)
+    {
+        $order = Order::with(['items' => function ($query) {
             $query->where('status_item', 'Aktif');
         }])->findOrFail($id);
 
         return view('admin.invoice_print', compact('order'));
     }
 
-    public function paymentIndex(Request $request) {
+    // REVISI: Penambahan logika search, filter tanggal, dan export excel untuk Payment Index
+    public function paymentIndex(Request $request)
+    {
         // FILTER: Hanya ambil order yang total_pendapatan > 0 (Artinya sudah direkap harganya)
         $query = Order::where('total_pendapatan', '>', 0)->where('status_order', 'Aktif');
-    
-        // Filter status jika dipilih
+
+        // --- FILTER STATUS (Lunas / Belum Lunas / Cicil) ---
         if ($request->filter == 'lunas') {
             $query->where('status_pembayaran', 'Lunas');
         } elseif ($request->filter == 'belum_lunas') {
             $query->whereIn('status_pembayaran', ['Belum Lunas', 'Cicil']);
         }
-    
+
+        // --- LOGIKA PENCARIAN (Search) ---
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('nama_pelanggan', 'LIKE', "%$search%")
+                  ->orWhere('no_invoice', 'LIKE', "%$search%")
+                  ->orWhere('catatan_pembayaran', 'LIKE', "%$search%")
+                  ->orWhere('metode_pembayaran', 'LIKE', "%$search%");
+            });
+        }
+
+        // --- LOGIKA FILTER TANGGAL (Date Range) ---
+        if ($request->filled('tgl_mulai') && $request->filled('tgl_selesai')) {
+            // Filter berdasarkan tanggal penjadwalan
+            $query->whereBetween('penjadwalan', [$request->tgl_mulai, $request->tgl_selesai]);
+        }
+
+        // --- LOGIKA EXPORT EXCEL (CSV Format) ---
+        if ($request->has('export') && $request->export == 'excel') {
+            $ordersExport = $query->orderBy('updated_at', 'desc')->get();
+            $filename = "Rekap_Pembayaran_" . date('Ymd_His') . ".csv";
+            
+            $headers = [
+                "Content-type"        => "text/csv",
+                "Content-Disposition" => "attachment; filename=$filename",
+                "Pragma"              => "no-cache",
+                "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+                "Expires"             => "0"
+            ];
+
+            $columns = [
+                'No', 'Nama Pelanggan', 'No. Invoice / Ref', 'Status Pembayaran', 
+                'Total Tagihan', 'Sudah Bayar', 'Sisa Hutang', 
+                'Metode Pembayaran', 'Tanggal Lunas'
+            ];
+
+            $callback = function() use($ordersExport, $columns) {
+                $file = fopen('php://output', 'w');
+                // Menambahkan BOM agar Microsoft Excel bisa membaca karakter UTF-8 dengan baik
+                fputs($file, $bom = (chr(0xEF) . chr(0xBB) . chr(0xBF))); 
+                fputcsv($file, $columns); 
+
+                foreach ($ordersExport as $index => $order) {
+                    $row['No'] = $index + 1;
+                    $row['Nama Pelanggan'] = $order->nama_pelanggan;
+                    $row['No. Invoice / Ref'] = $order->catatan_pembayaran ?? $order->no_invoice;
+                    $row['Status Pembayaran'] = $order->status_pembayaran;
+                    $row['Total Tagihan'] = $order->total_pendapatan;
+                    $row['Sudah Bayar'] = $order->jumlah_dibayar;
+                    $row['Sisa Hutang'] = $order->total_pendapatan - $order->jumlah_dibayar;
+                    $row['Metode Pembayaran'] = $order->metode_pembayaran ?? '-';
+                    $row['Tanggal Lunas'] = $order->tanggal_pelunasan ? \Carbon\Carbon::parse($order->tanggal_pelunasan)->format('Y-m-d') : '-';
+
+                    fputcsv($file, array(
+                        $row['No'], $row['Nama Pelanggan'], $row['No. Invoice / Ref'], 
+                        $row['Status Pembayaran'], $row['Total Tagihan'], $row['Sudah Bayar'], 
+                        $row['Sisa Hutang'], $row['Metode Pembayaran'], $row['Tanggal Lunas']
+                    ));
+                }
+                fclose($file);
+            };
+
+            return response()->stream($callback, 200, $headers);
+        }
+
+        // --- TAMPILAN VIEW NORMAL ---
         $orders = $query->orderBy('updated_at', 'desc')->paginate(10);
+        $orders->appends($request->all());
+
         return view('admin.payment_index', compact('orders'));
     }
 
-    public function paymentUpdate(Request $request, $id) {
+    public function paymentUpdate(Request $request, $id)
+    {
         $order = Order::findOrFail($id);
         $request->validate(['jumlah_dibayar' => 'required|numeric|min:0']);
         $totalTagihan = $order->total_pendapatan;
         $uangMasuk = $request->jumlah_dibayar;
-        if ($uangMasuk >= $totalTagihan) { $statusBaru = 'Lunas'; $tglLunas = $request->tanggal_pelunasan ?? now(); }
-        elseif ($uangMasuk > 0) { $statusBaru = 'Cicil'; $tglLunas = null; }
-        else { $statusBaru = 'Belum Lunas'; $tglLunas = null; }
+        if ($uangMasuk >= $totalTagihan) {
+            $statusBaru = 'Lunas';
+            $tglLunas = $request->tanggal_pelunasan ?? now();
+        } elseif ($uangMasuk > 0) {
+            $statusBaru = 'Cicil';
+            $tglLunas = null;
+        } else {
+            $statusBaru = 'Belum Lunas';
+            $tglLunas = null;
+        }
         $order->update(['jumlah_dibayar' => $uangMasuk, 'status_pembayaran' => $statusBaru, 'metode_pembayaran' => $request->metode_pembayaran, 'tanggal_pelunasan' => $tglLunas, 'catatan_pembayaran' => $request->catatan_pembayaran]);
         return redirect()->route('admin.payment_index')->with('success', 'Status: ' . $statusBaru);
     }
 
-    public function laporan(Request $request) {
+    public function laporan(Request $request)
+    {
         // Kita gunakan query dari tabel OrderItem agar bisa memfilter per Jenis Jasa, Sopir, dan Plat
         $query = OrderItem::with('order')
             ->join('orders', 'order_items.order_id', '=', 'orders.id')
             ->where('orders.status_order', 'Aktif')
             ->where('order_items.status_item', 'Aktif')
             ->where('order_items.subtotal_pendapatan', '>', 0);
-    
+
         // --- FILTERING ---
         if ($request->filled('nama')) {
             $query->where('orders.nama_pelanggan', 'like', '%' . $request->nama . '%');
@@ -317,80 +554,152 @@ class OrderController extends Controller
         if ($request->filled('tgl_mulai') && $request->filled('tgl_selesai')) {
             $query->whereBetween('orders.penjadwalan', [$request->tgl_mulai, $request->tgl_selesai]);
         }
-    
+
         // --- HITUNG RINGKASAN ---
-        $totalNominal = $query->sum('order_items.subtotal_pendapatan'); 
-        $totalLabaKotor = $query->sum('order_items.subtotal_keuntungan'); 
-        $totalLayanan = $query->count(); 
-    
+        $totalNominal = $query->sum('order_items.subtotal_pendapatan');
+        $totalLabaKotor = $query->sum('order_items.subtotal_keuntungan');
+        $totalLayanan = $query->count();
+
         // --- HITUNG PENGELUARAN & LABA BERSIH ---
-        $queryPengeluaran = Pengeluaran::query(); 
+        $queryPengeluaran = Pengeluaran::query();
         if ($request->filled('tgl_mulai') && $request->filled('tgl_selesai')) {
             $queryPengeluaran->whereBetween('tanggal', [$request->tgl_mulai, $request->tgl_selesai]);
         }
         $totalPengeluaran = $queryPengeluaran->sum('nominal');
         $labaBersih = $totalLabaKotor - $totalPengeluaran;
-    
+
         // --- DATA UNTUK TABEL & DROPDOWN ---
         $orders = $query->select('order_items.*', 'orders.penjadwalan', 'orders.nama_pelanggan', 'orders.no_wa')
             ->orderBy('orders.penjadwalan', 'desc')
             ->paginate(25);
-    
+
         $daftarLayanan = Service::distinct()->pluck('nama_layanan');
-    
+
         return view('admin.laporan', compact(
-            'orders', 'totalNominal', 'totalLabaKotor', 'totalLayanan', 
-            'totalPengeluaran', 'labaBersih', 'daftarLayanan'
+            'orders',
+            'totalNominal',
+            'totalLabaKotor',
+            'totalLayanan',
+            'totalPengeluaran',
+            'labaBersih',
+            'daftarLayanan'
         ));
     }
 
-    public function getRealtimeDashboard() {
+    public function getRealtimeDashboard()
+    {
         // REVISI LOGIKA BADGE: Hanya hitung order AKTIF yang totalnya 0 DAN masih punya item AKTIF
         $badgeCount = Order::where('status_order', 'Aktif')
             ->where('total_pendapatan', 0)
-            ->whereHas('items', function($query) {
+            ->whereHas('items', function ($query) {
                 $query->where('status_item', 'Aktif');
             })
             ->count();
-        
+
         // Gunakan Carbon Jakarta agar sinkron dengan real life
         $today = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d');
-        
+
         // Pastikan memuat relasi items yang aktif saja agar tabel sinkron
-        $jadwalHariIni = Order::with(['items' => function($query) {
-                $query->where('status_item', 'Aktif');
-            }])
+        $jadwalHariIni = Order::with(['items' => function ($query) {
+            $query->where('status_item', 'Aktif');
+        }])
             ->whereDate('penjadwalan', $today)
             ->where('status_order', 'Aktif')
-            ->whereHas('items', function($query) {
+            ->whereHas('items', function ($query) {
                 $query->where('status_item', 'Aktif');
             })
             ->get();
-    
+
         return response()->json([
-            'badge' => $badgeCount, 
+            'badge' => $badgeCount,
             'html' => view('admin.partials.dashboard_table', compact('jadwalHariIni'))->render()
         ]);
     }
 
-    public function indexCancel()
+    // REVISI: Penambahan logika search, filter tanggal, dan export excel untuk Rekap Cancel
+    public function indexCancel(Request $request)
     {
-        // Mengambil data item yang statusnya Batal
-        // Kita panggil relasi 'order' untuk mendapatkan nama pelanggan
-        $orders = OrderItem::with('order')
-            ->where('status_item', 'Batal')
-            ->orderBy('updated_at', 'desc')
-            ->get();
+        $query = OrderItem::with('order')
+            ->where('status_item', 'Batal');
+
+        // --- LOGIKA PENCARIAN (Search) ---
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('jenis_layanan', 'LIKE', "%$search%")
+                  ->orWhere('alasan_cancel', 'LIKE', "%$search%")
+                  ->orWhereHas('order', function ($sq) use ($search) {
+                      $sq->where('nama_pelanggan', 'LIKE', "%$search%");
+                  });
+            });
+        }
+
+        // --- LOGIKA FILTER TANGGAL (Date Range berdasarkan tanggal Batal/updated_at) ---
+        if ($request->filled('tgl_mulai') && $request->filled('tgl_selesai')) {
+            // Karena menggunakan datetime, tambahkan jam agar mencakup full satu hari
+            $start = $request->tgl_mulai . " 00:00:00";
+            $end = $request->tgl_selesai . " 23:59:59";
+            $query->whereBetween('updated_at', [$start, $end]);
+        }
+
+        // --- LOGIKA EXPORT EXCEL (CSV Format) ---
+        if ($request->has('export') && $request->export == 'excel') {
+            $ordersExport = $query->orderBy('updated_at', 'desc')->get();
+            $filename = "Monitoring_Cancel_" . date('Ymd_His') . ".csv";
+            
+            $headers = [
+                "Content-type"        => "text/csv",
+                "Content-Disposition" => "attachment; filename=$filename",
+                "Pragma"              => "no-cache",
+                "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+                "Expires"             => "0"
+            ];
+
+            $columns = [
+                'No', 'Tgl Batal', 'Nama Pelanggan', 'Jenis Layanan', 'Armada', 
+                'Alasan Pembatalan', 'Potensi Kehilangan Pendapatan'
+            ];
+
+            $callback = function() use($ordersExport, $columns) {
+                $file = fopen('php://output', 'w');
+                fputs($file, $bom = (chr(0xEF) . chr(0xBB) . chr(0xBF))); // BOM untuk UTF-8 Excel
+                fputcsv($file, $columns); 
+
+                foreach ($ordersExport as $index => $item) {
+                    $row['No'] = $index + 1;
+                    $row['Tgl Batal'] = \Carbon\Carbon::parse($item->updated_at)->format('Y-m-d H:i');
+                    $row['Nama Pelanggan'] = $item->order->nama_pelanggan ?? 'N/A';
+                    $row['Jenis Layanan'] = $item->jenis_layanan;
+                    $row['Armada'] = $item->armada;
+                    $row['Alasan Pembatalan'] = $item->alasan_cancel ?? '-';
+                    $row['Potensi Kehilangan Pendapatan'] = $item->subtotal_pendapatan;
+
+                    fputcsv($file, array(
+                        $row['No'], $row['Tgl Batal'], $row['Nama Pelanggan'], 
+                        $row['Jenis Layanan'], $row['Armada'], $row['Alasan Pembatalan'], 
+                        $row['Potensi Kehilangan Pendapatan']
+                    ));
+                }
+                fclose($file);
+            };
+
+            return response()->stream($callback, 200, $headers);
+        }
+
+        // --- TAMPILAN VIEW NORMAL ---
+        $orders = $query->orderBy('updated_at', 'desc')->paginate(10);
 
         return view('admin.rekap_cancel', compact('orders'));
     }
 
-    public function cancel(Request $request, $id) {
+    public function cancel(Request $request, $id)
+    {
         Order::findOrFail($id)->update(['status_order' => 'Batal', 'alasan_cancel' => $request->alasan_cancel]);
         return back()->with('success', 'Order berhasil dibatalkan.');
     }
 
-    public function restore($id) {
+    public function restore($id)
+    {
         Order::findOrFail($id)->update(['status_order' => 'Aktif', 'alasan_cancel' => null]);
         return redirect()->route('admin.rekap_order')->with('success', 'Order dikembalikan ke daftar aktif.');
     }
@@ -405,46 +714,50 @@ class OrderController extends Controller
         return redirect()->route('admin.rekap_order')->with('success', 'Data order telah dihapus secara permanen!');
     }
 
-    public function cancelItem(Request $request, $id) {
+    public function cancelItem(Request $request, $id)
+    {
         $item = OrderItem::findOrFail($id);
         $item->update([
             'status_item' => 'Batal',
             'alasan_cancel' => $request->alasan_cancel
         ]);
-        
+
         // Hitung ulang total di tabel orders
         $this->recalculateOrder($item->order_id);
-    
+
         return back()->with('success', 'Layanan berhasil dibatalkan.');
     }
-    
-    public function destroyItem($id) {
+
+    public function destroyItem($id)
+    {
         $item = OrderItem::findOrFail($id);
         $orderId = $item->order_id;
         $item->delete();
-        
+
         // Hitung ulang total di tabel orders
         $this->recalculateOrder($orderId);
-    
+
         return back()->with('success', 'Layanan dihapus permanen.');
     }
-    
-    public function restoreItem($id) {
+
+    public function restoreItem($id)
+    {
         $item = OrderItem::findOrFail($id);
         $item->update(['status_item' => 'Aktif', 'alasan_cancel' => null]);
-        
+
         // Hitung ulang total di tabel orders
         $this->recalculateOrder($item->order_id);
-    
+
         return back()->with('success', 'Layanan diaktifkan kembali.');
     }
-    
+
     // Fungsi pembantu untuk update total pendapatan nota secara otomatis
-    private function recalculateOrder($orderId) {
+    private function recalculateOrder($orderId)
+    {
         $order = Order::with('items')->find($orderId);
         $totalPendapatan = $order->items->where('status_item', 'Aktif')->sum('subtotal_pendapatan');
         $totalKeuntungan = $order->items->where('status_item', 'Aktif')->sum('subtotal_keuntungan');
-        
+
         $order->update([
             'total_pendapatan' => $totalPendapatan,
             'total_keuntungan' => $totalKeuntungan

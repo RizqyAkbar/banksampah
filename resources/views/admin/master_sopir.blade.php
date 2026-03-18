@@ -16,7 +16,6 @@
     }
     .rounded-l-none { border-top-left-radius: 0 !important; border-bottom-left-radius: 0 !important; }
 
-    /* REVISI: Penyesuaian ukuran input dan pop-up khusus Mobile */
     @media (max-width: 640px) {
         .form-input { padding: 0.6rem 0.75rem; font-size: 0.8rem; }
         
@@ -59,7 +58,6 @@
         </div>
         <form id="formTambah" action="{{ route('admin.master_sopir.store') }}" method="POST" class="p-4 sm:p-6">
             @csrf
-            {{-- REVISI: Gap diperkecil di mobile --}}
             <div class="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4 items-end">
                 <div class="md:col-span-4">
                     <label class="block text-[10px] sm:text-xs font-bold text-slate-500 uppercase mb-1 sm:mb-1.5">Nama Sopir</label>
@@ -69,19 +67,41 @@
                     <label class="block text-[10px] sm:text-xs font-bold text-slate-500 uppercase mb-1 sm:mb-1.5">No. WhatsApp</label>
                     <div class="flex">
                         <span class="inline-flex items-center px-3 sm:px-4 rounded-l-xl border border-r-0 border-slate-200 bg-slate-100 text-slate-500 text-xs sm:text-sm font-bold">+62</span>
-                        {{-- REVISI: Penambahan oninput="formatPhoneNumber(this)" --}}
                         <input type="tel" name="no_wa_sopir" placeholder="8123..." class="form-input rounded-l-none" oninput="formatPhoneNumber(this)" required>
                     </div>
                 </div>
                 <div class="md:col-span-3">
-                    <label class="block text-[10px] sm:text-xs font-bold text-slate-500 uppercase mb-1 sm:mb-1.5">Plat Armada Default</label>
-                    <input type="text" name="plat_armada" placeholder="AB 1234 XX" class="form-input uppercase" required>
+                    <label class="block text-[10px] sm:text-xs font-bold text-slate-500 uppercase mb-1 sm:mb-1.5">Plat Armada Default <span class="text-slate-400 font-normal ml-1 normal-case">(Opsional)</span></label>
+                    <input type="text" name="plat_armada" placeholder="AB 1234 XX" class="form-input uppercase">
                 </div>
                 <div class="md:col-span-2 pt-2 md:pt-0">
                     <button type="submit" class="w-full bg-[#00C264] hover:bg-[#009B4E] text-white py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all shadow-md flex items-center justify-center gap-2">
                         <i class="fa-solid fa-floppy-disk"></i> Simpan
                     </button>
                 </div>
+            </div>
+        </form>
+    </div>
+
+    {{-- FITUR BARU: FORM FILTER & EXPORT --}}
+    <div class="rounded-2xl border border-slate-100 bg-white p-4 sm:p-6 shadow-sm mb-6">
+        <form action="{{ route('admin.master_sopir.index') }}" method="GET" class="flex flex-col md:flex-row gap-4 items-end">
+            <div class="w-full md:flex-1">
+                <label class="block text-[10px] sm:text-xs font-bold text-slate-400 uppercase mb-1.5">Pencarian</label>
+                <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari nama, wa, atau plat..." class="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-400/20 transition-all">
+            </div>
+            
+            {{-- Tombol Filter --}}
+            <div class="w-full md:w-auto flex flex-col sm:flex-row gap-2">
+                <a href="{{ route('admin.master_sopir.index') }}" class="h-11 px-5 bg-slate-100 text-slate-500 rounded-xl hover:bg-slate-200 transition shadow-sm flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider w-full sm:w-auto">
+                    <i class="fa-solid fa-arrows-rotate"></i> Reset
+                </a>
+                <button type="submit" class="h-11 px-5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition shadow-lg flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider w-full sm:w-auto">
+                    <i class="fa-solid fa-magnifying-glass"></i> Filter
+                </button>
+                <button type="submit" name="export" value="excel" class="h-11 px-5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition shadow-lg flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider w-full sm:w-auto">
+                    <i class="fa-solid fa-file-excel"></i> Export
+                </button>
             </div>
         </form>
     </div>
@@ -95,7 +115,6 @@
             <table class="w-full text-left text-sm text-slate-600">
                 <thead class="bg-slate-50 text-xs uppercase text-slate-500 font-bold border-b border-slate-100">
                     <tr>
-                        {{-- REVISI: Tambahkan whitespace-nowrap --}}
                         <th class="px-6 py-4 text-center w-16 whitespace-nowrap">No</th>
                         <th class="px-6 py-4 whitespace-nowrap">Nama Sopir</th>
                         <th class="px-6 py-4 whitespace-nowrap">Kontak WA</th>
@@ -106,7 +125,7 @@
                 <tbody class="divide-y divide-slate-100">
                     @forelse($drivers as $index => $d)
                     <tr class="hover:bg-slate-50/50 transition-colors">
-                        <td class="px-6 py-4 text-center font-bold text-slate-400">{{ $index + 1 }}</td>
+                        <td class="px-6 py-4 text-center font-bold text-slate-400">{{ ($drivers->currentPage() - 1) * $drivers->perPage() + $loop->iteration }}</td>
                         <td class="px-6 py-4 font-bold text-slate-900 whitespace-nowrap">{{ $d->nama_sopir }}</td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <a href="https://wa.me/{{ $d->no_wa_sopir }}" target="_blank" class="text-green-600 hover:underline font-medium">
@@ -114,7 +133,7 @@
                             </a>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <span class="bg-slate-100 px-2 py-1 rounded text-[11px] font-bold text-slate-700 border border-slate-200 uppercase">{{ $d->plat_armada }}</span>
+                            <span class="bg-slate-100 px-2 py-1 rounded text-[11px] font-bold text-slate-700 border border-slate-200 uppercase">{{ $d->plat_armada ?: '-' }}</span>
                         </td>
                         <td class="px-6 py-4 text-right">
                             <div class="flex justify-end gap-2">
@@ -135,6 +154,11 @@
                     @endforelse
                 </tbody>
             </table>
+        </div>
+
+        {{-- REVISI: Pagination --}}
+        <div class="p-6 border-t border-slate-100 bg-slate-50/30">
+            {{ $drivers->appends(request()->query())->links() }}
         </div>
     </div>
 </div>
@@ -157,14 +181,13 @@
                 <label class="block text-[10px] sm:text-xs font-bold text-slate-500 uppercase mb-1 sm:mb-1.5">No. WhatsApp</label>
                 <div class="flex">
                     <span class="inline-flex items-center px-3 sm:px-4 rounded-l-xl border border-r-0 border-slate-200 bg-slate-100 text-slate-500 text-xs sm:text-sm font-bold">+62</span>
-                    {{-- REVISI: Penambahan oninput="formatPhoneNumber(this)" --}}
                     <input type="tel" name="no_wa_sopir" id="edit_wa" class="form-input rounded-l-none" oninput="formatPhoneNumber(this)" required>
                 </div>
             </div>
 
             <div>
-                <label class="block text-[10px] sm:text-xs font-bold text-slate-500 uppercase mb-1 sm:mb-1.5">Plat Armada</label>
-                <input type="text" name="plat_armada" id="edit_plat" class="form-input uppercase" required>
+                <label class="block text-[10px] sm:text-xs font-bold text-slate-500 uppercase mb-1 sm:mb-1.5">Plat Armada <span class="text-slate-400 font-normal ml-1 normal-case">(Opsional)</span></label>
+                <input type="text" name="plat_armada" id="edit_plat" class="form-input uppercase">
             </div>
             <div class="pt-3 sm:pt-4 flex gap-2 sm:gap-3">
                 <button type="button" onclick="closeModal()" class="flex-1 px-4 py-2 sm:py-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm font-bold text-slate-600 hover:bg-slate-50">Batal</button>
@@ -177,18 +200,10 @@
 
 @section('extra_js')
 <script>
-    // REVISI: Fungsi Javascript Pembersih Format No WA secara Realtime (Paste & Ketik)
     function formatPhoneNumber(input) {
-        let value = input.value.replace(/\D/g, ''); // Hapus semua karakter selain angka (spasi, tanda hubung, dll)
-        
-        // Hapus kode negara / angka 0 di depan jika terdeteksi
-        if (value.startsWith('0')) {
-            value = value.substring(1);
-        }
-        if (value.startsWith('62')) {
-            value = value.substring(2);
-        }
-        
+        let value = input.value.replace(/\D/g, ''); 
+        if (value.startsWith('0')) value = value.substring(1);
+        if (value.startsWith('62')) value = value.substring(2);
         input.value = value;
     }
 
@@ -199,39 +214,29 @@
         form.action = `/admin/master-sopir/${driver.id}`;
         document.getElementById('edit_nama').value = driver.nama_sopir;
         
-        // Memotong angka 62 agar tidak double di inputbox
         let waNumber = driver.no_wa_sopir.toString();
         if (waNumber.startsWith('62')) {
             waNumber = waNumber.substring(2);
         }
         document.getElementById('edit_wa').value = waNumber;
-        
-        document.getElementById('edit_plat').value = driver.plat_armada;
+        document.getElementById('edit_plat').value = driver.plat_armada || '';
         
         modal.classList.remove('hidden');
     }
 
-    // Pastikan saat submit, angka 62 ditambahkan kembali untuk form TAMBAH
     document.getElementById('formTambah').onsubmit = function() {
         const inputWa = document.querySelector('#formTambah input[name="no_wa_sopir"]');
-        let value = inputWa.value.replace(/\D/g, ''); // Ambil hanya angka
-        
+        let value = inputWa.value.replace(/\D/g, ''); 
         if (value.startsWith('0')) value = value.substring(1);
         if (value.startsWith('62')) value = value.substring(2);
-        
         inputWa.value = '62' + value;
     };
 
-    // Pastikan saat submit, angka 62 ditambahkan kembali untuk form EDIT
     document.getElementById('formEdit').onsubmit = function() {
         const inputWa = document.getElementById('edit_wa');
-        let value = inputWa.value.replace(/\D/g, ''); // Ambil hanya angka
-        
-        // Jika user tidak sengaja mengetik 0 atau 62 di depan, bersihkan dulu
+        let value = inputWa.value.replace(/\D/g, ''); 
         if (value.startsWith('0')) value = value.substring(1);
         if (value.startsWith('62')) value = value.substring(2);
-        
-        // Tambahkan kembali 62 di depan nilai asli sebelum dikirim ke database
         inputWa.value = '62' + value;
     };
 

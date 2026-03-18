@@ -23,7 +23,7 @@
     }
     .form-input-grouped { border-top-left-radius: 0 !important; border-bottom-left-radius: 0 !important; }
 
-    /* REVISI: Penyesuaian ukuran input dan pop-up khusus Mobile */
+    /* Penyesuaian ukuran input dan pop-up khusus Mobile */
     @media (max-width: 640px) {
         .form-input { padding: 0.6rem 0.75rem; font-size: 0.8rem; }
         .input-group-text-custom { padding: 0 0.5rem; font-size: 0.7rem; }
@@ -66,7 +66,6 @@
         </div>
         <form action="{{ route('admin.master_layanan.store') }}" method="POST" class="p-4 sm:p-6">
             @csrf
-            {{-- REVISI: Gap diperkecil di mobile --}}
             <div class="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4 items-end">
                 <div class="md:col-span-3">
                     <label class="block text-[10px] sm:text-xs font-bold text-slate-500 uppercase mb-1 sm:mb-1.5">Nama Layanan</label>
@@ -74,7 +73,7 @@
                 </div>
                 <div class="md:col-span-3">
                     <label class="block text-[10px] sm:text-xs font-bold text-slate-500 uppercase mb-1 sm:mb-1.5">Jenis Armada</label>
-                    <input type="text" name="armada" placeholder="Ex: Becak / Truk Engkel" class="form-input" required>
+                    <input type="text" name="armada" placeholder="Ex: Pickup / Truk Dump" class="form-input" required>
                 </div>
                 <div class="md:col-span-2">
                     <label class="block text-[10px] sm:text-xs font-bold text-slate-500 uppercase mb-1 sm:mb-1.5">HPP (Modal)</label>
@@ -99,6 +98,28 @@
         </form>
     </div>
 
+    {{-- FITUR BARU: FORM FILTER & EXPORT --}}
+    <div class="rounded-2xl border border-slate-100 bg-white p-4 sm:p-6 shadow-sm mb-6">
+        <form action="{{ route('admin.master_layanan.index') }}" method="GET" class="flex flex-col md:flex-row gap-4 items-end">
+            <div class="w-full md:flex-1">
+                <label class="block text-[10px] sm:text-xs font-bold text-slate-400 uppercase mb-1.5">Pencarian</label>
+                <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari nama layanan atau armada..." class="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-400/20 transition-all">
+            </div>
+            
+            <div class="w-full md:w-auto flex flex-col sm:flex-row gap-2">
+                <a href="{{ route('admin.master_layanan.index') }}" class="h-11 px-5 bg-slate-100 text-slate-500 rounded-xl hover:bg-slate-200 transition shadow-sm flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider w-full sm:w-auto">
+                    <i class="fa-solid fa-arrows-rotate"></i> Reset
+                </a>
+                <button type="submit" class="h-11 px-5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition shadow-lg flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider w-full sm:w-auto">
+                    <i class="fa-solid fa-magnifying-glass"></i> Filter
+                </button>
+                <button type="submit" name="export" value="excel" class="h-11 px-5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition shadow-lg flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider w-full sm:w-auto">
+                    <i class="fa-solid fa-file-excel"></i> Export
+                </button>
+            </div>
+        </form>
+    </div>
+
     {{-- CARD 2: TABEL DAFTAR LAYANAN --}}
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div class="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
@@ -108,7 +129,6 @@
             <table class="w-full text-left text-sm text-slate-600">
                 <thead class="bg-slate-50 text-xs uppercase text-slate-500 font-bold border-b border-slate-100">
                     <tr>
-                        {{-- REVISI: Tambahkan whitespace-nowrap --}}
                         <th class="px-6 py-4 text-center w-16 whitespace-nowrap">No</th>
                         <th class="px-6 py-4 whitespace-nowrap">Layanan</th>
                         <th class="px-6 py-4 whitespace-nowrap">Armada</th>
@@ -120,7 +140,7 @@
                 <tbody class="divide-y divide-slate-100">
                     @forelse($services as $index => $s)
                     <tr class="hover:bg-slate-50/50 transition-colors">
-                        <td class="px-6 py-4 text-center font-bold text-slate-400">{{ $index + 1 }}</td>
+                        <td class="px-6 py-4 text-center font-bold text-slate-400">{{ ($services->currentPage() - 1) * $services->perPage() + $loop->iteration }}</td>
                         <td class="px-6 py-4 font-bold text-slate-900 whitespace-nowrap">{{ $s->nama_layanan }}</td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <span class="px-2 py-1 rounded-lg bg-slate-100 text-slate-600 text-[10px] font-bold uppercase border border-slate-200">
@@ -148,6 +168,11 @@
                     @endforelse
                 </tbody>
             </table>
+        </div>
+        
+        {{-- REVISI: Pagination --}}
+        <div class="p-6 border-t border-slate-100 bg-slate-50/30">
+            {{ $services->appends(request()->query())->links() }}
         </div>
     </div>
 </div>
