@@ -170,7 +170,6 @@
             </table>
         </div>
         
-        {{-- REVISI: Pagination --}}
         <div class="p-6 border-t border-slate-100 bg-slate-50/30">
             {{ $services->appends(request()->query())->links() }}
         </div>

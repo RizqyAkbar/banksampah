@@ -11,6 +11,10 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\Pengeluaran;
 use App\Models\Service; // Ganti dengan nama model Master Layanan Anda
 use Carbon\Carbon;
+use App\Exports\OrderExport;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\PaymentExport;
+use App\Exports\LaporanExport;
 
 class OrderController extends Controller
 {
@@ -22,6 +26,37 @@ class OrderController extends Controller
 
         // Kirim data tersebut ke view dengan nama variabel yang sama
         return view('admin.input_order', compact('masterLayanan'));
+    }
+
+    public function exportExcel(Request $request)
+    {
+        $request->validate([
+            'tgl_mulai' => 'required|date',
+            'tgl_selesai' => 'required|date',
+        ]);
+
+        $namaFile = 'Rekap_Order_' . $request->tgl_mulai . '_to_' . $request->tgl_selesai . '.xlsx';
+
+        return Excel::download(new OrderExport($request->tgl_mulai, $request->tgl_selesai), $namaFile);
+    }
+
+    public function exportPaymentExcel(Request $request)
+    {
+        $request->validate([
+            'tgl_mulai' => 'required|date',
+            'tgl_selesai' => 'required|date',
+        ]);
+
+        return Excel::download(
+            new PaymentExport($request->tgl_mulai, $request->tgl_selesai),
+            'Laporan_Pembayaran_' . $request->tgl_mulai . '_to_' . $request->tgl_selesai . '.xlsx'
+        );
+    }
+
+    public function exportLaporan(Request $request)
+    {
+        $tgl = date('d-m-Y');
+        return Excel::download(new LaporanExport($request), "Laporan_Performa_Jasa_{$tgl}.xlsx");
     }
 
     // 2. Menyimpan Input Order Awal (REVISI UNTUK OPSI LAINNYA)
@@ -101,7 +136,20 @@ class OrderController extends Controller
     // 3. Halaman REKAP ORDER (DENGAN FITUR SEARCH, FILTER TANGGAL & EXPORT)
     public function index(Request $request)
     {
-        // Inisialisasi query
+        // --- LOGIKA EXPORT EXCEL LANGSUNG MENGGUNAKAN ORDEREXPORT ---
+        if ($request->has('export') && $request->export == 'excel') {
+            // Berikan default range jika user mengekspor tanpa memfilter tanggal
+            // Karena ini penjadwalan (bisa masa depan), kita set batas atas ke 5 tahun ke depan
+            $tgl_mulai = $request->tgl_mulai ?: '2023-01-01'; 
+            $tgl_selesai = $request->tgl_selesai ?: \Carbon\Carbon::now()->addYears(5)->format('Y-m-d');
+            
+            return Excel::download(
+                new OrderExport($tgl_mulai, $tgl_selesai), 
+                'Data_Rekap_Order_' . date('Ymd_His') . '.xlsx'
+            );
+        }
+
+        // --- LOGIKA NORMAL (TAMPILAN WEB & PAGINATION) ---
         $query = Order::with(['items' => function ($query) {
                 $query->where('status_item', 'Aktif');
             }])
@@ -131,62 +179,6 @@ class OrderController extends Controller
             $query->whereBetween('penjadwalan', [$request->tgl_mulai, $request->tgl_selesai]);
         }
 
-        // --- LOGIKA EXPORT EXCEL (CSV Format) ---
-        // Jika tombol Export diklik (membawa request export=excel)
-        if ($request->has('export') && $request->export == 'excel') {
-            $ordersExport = $query->orderBy('penjadwalan', 'desc')->get();
-            $filename = "Data_Rekap_Order_" . date('Ymd_His') . ".csv";
-            
-            $headers = [
-                "Content-type"        => "text/csv",
-                "Content-Disposition" => "attachment; filename=$filename",
-                "Pragma"              => "no-cache",
-                "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
-                "Expires"             => "0"
-            ];
-
-            $columns = [
-                'No', 'No. Invoice', 'Tgl Penjadwalan', 'Nama Pelanggan', 
-                'No. WhatsApp', 'Alamat', 'Pendapatan', 'Layanan & Armada'
-            ];
-
-            $callback = function() use($ordersExport, $columns) {
-                $file = fopen('php://output', 'w');
-                // Menambahkan BOM agar Microsoft Excel bisa membaca karakter UTF-8 dengan baik
-                fputs($file, $bom = (chr(0xEF) . chr(0xBB) . chr(0xBF))); 
-                fputcsv($file, $columns); // Tulis baris Header
-
-                foreach ($ordersExport as $index => $order) {
-                    $layananDetail = [];
-                    foreach($order->items as $item) {
-                        // Kumpulkan detail layanan
-                        $layananDetail[] = $item->jenis_layanan . " (" . $item->armada . " - " . $item->jumlah_rit . " Rit)";
-                    }
-                    $layananStr = implode(" | ", $layananDetail); // Digabung jadi 1 text
-
-                    $row['No'] = $index + 1;
-                    $row['No. Invoice'] = $order->no_invoice;
-                    $row['Tgl Penjadwalan'] = \Carbon\Carbon::parse($order->penjadwalan)->format('Y-m-d');
-                    $row['Nama Pelanggan'] = $order->nama_pelanggan;
-                    $row['No. WhatsApp'] = "+" . $order->no_wa; // Tambah simbol + agar tidak jadi rumus di Excel
-                    $row['Alamat'] = $order->alamat;
-                    $row['Pendapatan'] = $order->total_pendapatan;
-                    $row['Layanan & Armada'] = $layananStr;
-
-                    // Tulis isi ke CSV
-                    fputcsv($file, array(
-                        $row['No'], $row['No. Invoice'], $row['Tgl Penjadwalan'], 
-                        $row['Nama Pelanggan'], $row['No. WhatsApp'], $row['Alamat'], 
-                        $row['Pendapatan'], $row['Layanan & Armada']
-                    ));
-                }
-                fclose($file);
-            };
-
-            return response()->stream($callback, 200, $headers);
-        }
-
-        // --- TAMPILAN VIEW NORMAL JIKA TIDAK DI EXPORT ---
         $orders = $query->orderBy('created_at', 'desc')->paginate(10);
         $orders->appends($request->all()); // Mempertahankan parameter filter saat pindah page
 
@@ -315,15 +307,15 @@ class OrderController extends Controller
     }
 
     // REVISI: Penambahan logika search, filter tanggal, dan export excel untuk Invoice Index
+    // --- FUNGSI TAMPILAN WEB INVOICE ---
     public function invoiceIndex(Request $request)
     {
         $query = Order::with(['items' => function ($query) {
             $query->where('status_item', 'Aktif');
         }])
         ->where('status_order', 'Aktif')
-        ->where('total_pendapatan', '>', 0); // Hanya yang sudah ada tagihannya
+        ->where('total_pendapatan', '>', 0);
 
-        // --- LOGIKA PENCARIAN (Search) ---
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
@@ -337,66 +329,23 @@ class OrderController extends Controller
             });
         }
 
-        // --- LOGIKA FILTER TANGGAL (Date Range) ---
         if ($request->filled('tgl_mulai') && $request->filled('tgl_selesai')) {
             $query->whereBetween('penjadwalan', [$request->tgl_mulai, $request->tgl_selesai]);
         }
 
-        // --- LOGIKA EXPORT EXCEL (CSV Format) ---
-        if ($request->has('export') && $request->export == 'excel') {
-            $ordersExport = $query->orderBy('penjadwalan', 'desc')->get();
-            $filename = "Daftar_Invoice_Pelanggan_" . date('Ymd_His') . ".csv";
-            
-            $headers = [
-                "Content-type"        => "text/csv",
-                "Content-Disposition" => "attachment; filename=$filename",
-                "Pragma"              => "no-cache",
-                "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
-                "Expires"             => "0"
-            ];
-
-            $columns = [
-                'No', 'No. Invoice', 'Tanggal Penjadwalan', 'Nama Pelanggan', 
-                'No. WhatsApp', 'Daftar Layanan & Detail', 'Total Tagihan'
-            ];
-
-            $callback = function() use($ordersExport, $columns) {
-                $file = fopen('php://output', 'w');
-                fputs($file, $bom = (chr(0xEF) . chr(0xBB) . chr(0xBF))); 
-                fputcsv($file, $columns); 
-
-                foreach ($ordersExport as $index => $order) {
-                    $layananDetail = [];
-                    foreach($order->items->where('status_item', 'Aktif') as $item) {
-                        $layananDetail[] = $item->jenis_layanan . " (" . $item->armada . " - " . $item->jumlah_rit . " Rit)";
-                    }
-                    $layananStr = implode(" | ", $layananDetail); 
-
-                    $row['No'] = $index + 1;
-                    $row['No. Invoice'] = $order->no_invoice;
-                    $row['Tanggal Penjadwalan'] = \Carbon\Carbon::parse($order->penjadwalan)->format('Y-m-d');
-                    $row['Nama Pelanggan'] = $order->nama_pelanggan;
-                    $row['No. WhatsApp'] = "+" . $order->no_wa; 
-                    $row['Daftar Layanan & Detail'] = $layananStr;
-                    $row['Total Tagihan'] = $order->total_pendapatan;
-
-                    fputcsv($file, array(
-                        $row['No'], $row['No. Invoice'], $row['Tanggal Penjadwalan'], 
-                        $row['Nama Pelanggan'], $row['No. WhatsApp'], $row['Daftar Layanan & Detail'], 
-                        $row['Total Tagihan']
-                    ));
-                }
-                fclose($file);
-            };
-
-            return response()->stream($callback, 200, $headers);
-        }
-
-        // --- TAMPILAN VIEW NORMAL ---
         $orders = $query->orderBy('updated_at', 'desc')->paginate(10);
         $orders->appends($request->all());
 
         return view('admin.invoice_index', compact('orders'));
+    }
+
+    // --- FUNGSI KHUSUS EXPORT EXCEL INVOICE ---
+    public function exportInvoice(Request $request)
+    {
+        return Excel::download(
+            new \App\Exports\InvoiceExport($request), 
+            "Laporan_Tagihan_" . date('Ymd_His') . ".xlsx"
+        );
     }
 
     // REVISI: Fungsi Detail untuk Modal Preview
@@ -427,17 +376,27 @@ class OrderController extends Controller
     // REVISI: Penambahan logika search, filter tanggal, dan export excel untuk Payment Index
     public function paymentIndex(Request $request)
     {
-        // FILTER: Hanya ambil order yang total_pendapatan > 0 (Artinya sudah direkap harganya)
+        // --- LOGIKA EXPORT EXCEL LANGSUNG MENGGUNAKAN PAYMENTEXPORT ---
+        if ($request->has('export') && $request->export == 'excel') {
+            // Jika tanggal tidak diisi, berikan default range yang cukup luas (misal dari 2023)
+            $tgl_mulai = $request->tgl_mulai ?: '2023-01-01'; 
+            $tgl_selesai = $request->tgl_selesai ?: date('Y-m-d');
+            
+            return Excel::download(
+                new PaymentExport($tgl_mulai, $tgl_selesai), 
+                'Rekap_Pembayaran_' . date('Ymd_His') . '.xlsx'
+            );
+        }
+
+        // --- LOGIKA NORMAL (TAMPILAN WEB & PAGINATION) ---
         $query = Order::where('total_pendapatan', '>', 0)->where('status_order', 'Aktif');
 
-        // --- FILTER STATUS (Lunas / Belum Lunas / Cicil) ---
         if ($request->filter == 'lunas') {
             $query->where('status_pembayaran', 'Lunas');
         } elseif ($request->filter == 'belum_lunas') {
             $query->whereIn('status_pembayaran', ['Belum Lunas', 'Cicil']);
         }
 
-        // --- LOGIKA PENCARIAN (Search) ---
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
@@ -448,61 +407,10 @@ class OrderController extends Controller
             });
         }
 
-        // --- LOGIKA FILTER TANGGAL (Date Range) ---
         if ($request->filled('tgl_mulai') && $request->filled('tgl_selesai')) {
-            // Filter berdasarkan tanggal penjadwalan
             $query->whereBetween('penjadwalan', [$request->tgl_mulai, $request->tgl_selesai]);
         }
 
-        // --- LOGIKA EXPORT EXCEL (CSV Format) ---
-        if ($request->has('export') && $request->export == 'excel') {
-            $ordersExport = $query->orderBy('updated_at', 'desc')->get();
-            $filename = "Rekap_Pembayaran_" . date('Ymd_His') . ".csv";
-            
-            $headers = [
-                "Content-type"        => "text/csv",
-                "Content-Disposition" => "attachment; filename=$filename",
-                "Pragma"              => "no-cache",
-                "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
-                "Expires"             => "0"
-            ];
-
-            $columns = [
-                'No', 'Nama Pelanggan', 'No. Invoice / Ref', 'Status Pembayaran', 
-                'Total Tagihan', 'Sudah Bayar', 'Sisa Hutang', 
-                'Metode Pembayaran', 'Tanggal Lunas'
-            ];
-
-            $callback = function() use($ordersExport, $columns) {
-                $file = fopen('php://output', 'w');
-                // Menambahkan BOM agar Microsoft Excel bisa membaca karakter UTF-8 dengan baik
-                fputs($file, $bom = (chr(0xEF) . chr(0xBB) . chr(0xBF))); 
-                fputcsv($file, $columns); 
-
-                foreach ($ordersExport as $index => $order) {
-                    $row['No'] = $index + 1;
-                    $row['Nama Pelanggan'] = $order->nama_pelanggan;
-                    $row['No. Invoice / Ref'] = $order->catatan_pembayaran ?? $order->no_invoice;
-                    $row['Status Pembayaran'] = $order->status_pembayaran;
-                    $row['Total Tagihan'] = $order->total_pendapatan;
-                    $row['Sudah Bayar'] = $order->jumlah_dibayar;
-                    $row['Sisa Hutang'] = $order->total_pendapatan - $order->jumlah_dibayar;
-                    $row['Metode Pembayaran'] = $order->metode_pembayaran ?? '-';
-                    $row['Tanggal Lunas'] = $order->tanggal_pelunasan ? \Carbon\Carbon::parse($order->tanggal_pelunasan)->format('Y-m-d') : '-';
-
-                    fputcsv($file, array(
-                        $row['No'], $row['Nama Pelanggan'], $row['No. Invoice / Ref'], 
-                        $row['Status Pembayaran'], $row['Total Tagihan'], $row['Sudah Bayar'], 
-                        $row['Sisa Hutang'], $row['Metode Pembayaran'], $row['Tanggal Lunas']
-                    ));
-                }
-                fclose($file);
-            };
-
-            return response()->stream($callback, 200, $headers);
-        }
-
-        // --- TAMPILAN VIEW NORMAL ---
         $orders = $query->orderBy('updated_at', 'desc')->paginate(10);
         $orders->appends($request->all());
 
@@ -531,6 +439,14 @@ class OrderController extends Controller
 
     public function laporan(Request $request)
     {
+        // --- LOGIKA EXPORT EXCEL ---
+        // Jika tombol Export ditekan, lemparkan keseluruhan request ke LaporanExport
+        if ($request->has('export') && $request->export == 'excel') {
+            $tgl = date('d-m-Y');
+            return Excel::download(new LaporanExport($request), "Laporan_Performa_Jasa_{$tgl}.xlsx");
+        }
+
+        // --- LOGIKA NORMAL (VIEW TABEL DI BROWSER) ---
         // Kita gunakan query dari tabel OrderItem agar bisa memfilter per Jenis Jasa, Sopir, dan Plat
         $query = OrderItem::with('order')
             ->join('orders', 'order_items.order_id', '=', 'orders.id')
@@ -572,6 +488,9 @@ class OrderController extends Controller
         $orders = $query->select('order_items.*', 'orders.penjadwalan', 'orders.nama_pelanggan', 'orders.no_wa')
             ->orderBy('orders.penjadwalan', 'desc')
             ->paginate(25);
+            
+        // Appends agar query filter tidak hilang saat pindah halaman (pagination)
+        $orders->appends($request->all());
 
         $daftarLayanan = Service::distinct()->pluck('nama_layanan');
 
@@ -616,13 +535,12 @@ class OrderController extends Controller
         ]);
     }
 
-    // REVISI: Penambahan logika search, filter tanggal, dan export excel untuk Rekap Cancel
+    // --- HALAMAN MONITORING CANCEL (TAMPILAN WEB) ---
     public function indexCancel(Request $request)
     {
-        $query = OrderItem::with('order')
-            ->where('status_item', 'Batal');
+        $query = OrderItem::with('order')->where('status_item', 'Batal');
 
-        // --- LOGIKA PENCARIAN (Search) ---
+        // PENCARIAN (Search)
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
@@ -634,62 +552,27 @@ class OrderController extends Controller
             });
         }
 
-        // --- LOGIKA FILTER TANGGAL (Date Range berdasarkan tanggal Batal/updated_at) ---
+        // FILTER TANGGAL 
         if ($request->filled('tgl_mulai') && $request->filled('tgl_selesai')) {
-            // Karena menggunakan datetime, tambahkan jam agar mencakup full satu hari
             $start = $request->tgl_mulai . " 00:00:00";
             $end = $request->tgl_selesai . " 23:59:59";
             $query->whereBetween('updated_at', [$start, $end]);
         }
 
-        // --- LOGIKA EXPORT EXCEL (CSV Format) ---
-        if ($request->has('export') && $request->export == 'excel') {
-            $ordersExport = $query->orderBy('updated_at', 'desc')->get();
-            $filename = "Monitoring_Cancel_" . date('Ymd_His') . ".csv";
-            
-            $headers = [
-                "Content-type"        => "text/csv",
-                "Content-Disposition" => "attachment; filename=$filename",
-                "Pragma"              => "no-cache",
-                "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
-                "Expires"             => "0"
-            ];
-
-            $columns = [
-                'No', 'Tgl Batal', 'Nama Pelanggan', 'Jenis Layanan', 'Armada', 
-                'Alasan Pembatalan', 'Potensi Kehilangan Pendapatan'
-            ];
-
-            $callback = function() use($ordersExport, $columns) {
-                $file = fopen('php://output', 'w');
-                fputs($file, $bom = (chr(0xEF) . chr(0xBB) . chr(0xBF))); // BOM untuk UTF-8 Excel
-                fputcsv($file, $columns); 
-
-                foreach ($ordersExport as $index => $item) {
-                    $row['No'] = $index + 1;
-                    $row['Tgl Batal'] = \Carbon\Carbon::parse($item->updated_at)->format('Y-m-d H:i');
-                    $row['Nama Pelanggan'] = $item->order->nama_pelanggan ?? 'N/A';
-                    $row['Jenis Layanan'] = $item->jenis_layanan;
-                    $row['Armada'] = $item->armada;
-                    $row['Alasan Pembatalan'] = $item->alasan_cancel ?? '-';
-                    $row['Potensi Kehilangan Pendapatan'] = $item->subtotal_pendapatan;
-
-                    fputcsv($file, array(
-                        $row['No'], $row['Tgl Batal'], $row['Nama Pelanggan'], 
-                        $row['Jenis Layanan'], $row['Armada'], $row['Alasan Pembatalan'], 
-                        $row['Potensi Kehilangan Pendapatan']
-                    ));
-                }
-                fclose($file);
-            };
-
-            return response()->stream($callback, 200, $headers);
-        }
-
-        // --- TAMPILAN VIEW NORMAL ---
         $orders = $query->orderBy('updated_at', 'desc')->paginate(10);
+        $orders->appends($request->all());
 
         return view('admin.rekap_cancel', compact('orders'));
+    }
+
+    // --- FUNGSI KHUSUS EXPORT EXCEL MONITORING CANCEL ---
+    public function exportCancel(Request $request)
+    {
+        // Memanggil class CancelExport yang baru saja kita buat
+        return Excel::download(
+            new \App\Exports\CancelExport($request), 
+            "Monitoring_Cancel_" . date('Ymd_His') . ".xlsx"
+        );
     }
 
     public function cancel(Request $request, $id)

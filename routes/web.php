@@ -41,9 +41,11 @@ Route::prefix('admin')->group(function () {
         Route::get('/rekap-order/{id}/edit', [OrderController::class, 'edit'])->name('admin.rekap_order.edit');
         Route::put('/rekap-order/{id}', [OrderController::class, 'update'])->name('admin.rekap_order.update');
         Route::delete('/rekap-order/{id}', [OrderController::class, 'destroy'])->name('admin.rekap_order.destroy');
+        Route::get('/rekap-order/export', [OrderController::class, 'exportExcel'])->name('admin.rekap_order.export');
 
         // CREATE INVOICE
         Route::get('/create-invoice', [OrderController::class, 'invoiceIndex'])->name('admin.invoice_index');
+        Route::get('/create-invoice/export', [OrderController::class, 'exportInvoice'])->name('admin.invoice.export_excel'); // Tambahkan baris ini
         Route::get('/order-detail/{id}', [OrderController::class, 'getDetail'])->name('admin.order.detail');
         Route::get('/invoice/print/{id}', [OrderController::class, 'invoicePrint'])->name('admin.invoice.print');
 
@@ -58,9 +60,12 @@ Route::prefix('admin')->group(function () {
         Route::get('/pengeluaran/{id}/edit', [PengeluaranController::class, 'edit'])->name('admin.pengeluaran.edit');
         Route::put('/pengeluaran/{id}', [PengeluaranController::class, 'update'])->name('admin.pengeluaran.update');
         Route::delete('/pengeluaran/{id}', [PengeluaranController::class, 'destroy'])->name('admin.pengeluaran.destroy');
+        Route::get('/pengeluaran/export', [PengeluaranController::class, 'exportExcel'])->name('admin.pengeluaran.export_excel'); // Tambahkan baris ini
+        Route::get('/pengeluaran/tambah', [PengeluaranController::class, 'create'])->name('admin.pengeluaran.create');
 
         // Monitoring Cancel
         Route::get('/rekap-cancel', [OrderController::class, 'indexCancel'])->name('admin.rekap_cancel');
+        Route::get('/rekap-cancel/export', [OrderController::class, 'exportCancel'])->name('admin.rekap_cancel.export');
         Route::put('/order/{id}/cancel', [OrderController::class, 'cancel'])->name('admin.order.cancel');
         Route::put('/order/{id}/restore', [OrderController::class, 'restore'])->name('admin.order.restore');
 
@@ -75,8 +80,13 @@ Route::prefix('admin')->group(function () {
         Route::post('/master-sopir', [DriverController::class, 'store'])->name('admin.master_sopir.store');
         Route::put('/master-sopir/{id}', [DriverController::class, 'update'])->name('admin.master_sopir.update');
         Route::delete('/master-sopir/{id}', [DriverController::class, 'destroy'])->name('admin.master_sopir.destroy');
+        Route::get('/master-sopir/export', [DriverController::class, 'exportExcel'])->name('admin.master_sopir.export');
         
         Route::get('/api/search-drivers', [DriverController::class, 'search'])->name('admin.api.drivers.search');
+        Route::get('/master-layanan/export', [ServiceController::class, 'exportExcel'])->name('admin.master_layanan.export');
+        Route::get('/invoice/export', [OrderController::class, 'exportExcel'])->name('admin.invoice.export');
+        Route::get('/payment/export', [OrderController::class, 'exportPaymentExcel'])->name('admin.payment.export');
+        Route::get('/laporan/export', [OrderController::class, 'exportLaporan'])->name('admin.laporan.export');
 
         // REVISI MASTER LAYANAN (Disamakan menggunakan {id})
         Route::prefix('master-layanan')->name('admin.master_layanan.')->group(function () {

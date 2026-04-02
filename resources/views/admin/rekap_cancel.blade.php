@@ -8,7 +8,7 @@
 
     {{-- FITUR BARU: FORM FILTER & EXPORT --}}
     <div class="rounded-2xl border border-slate-100 bg-white p-4 sm:p-6 shadow-sm mb-6">
-        <form action="{{ route('admin.rekap_cancel') }}" method="GET" class="flex flex-col md:flex-row gap-4 items-end">
+        <form method="GET" class="flex flex-col md:flex-row gap-4 items-end">
             <div class="w-full md:flex-1">
                 <label class="block text-[10px] sm:text-xs font-bold text-slate-400 uppercase mb-1.5">Pencarian</label>
                 <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari pelanggan, jasa, alasan..." class="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-400/20 transition-all">
@@ -22,10 +22,12 @@
                 <input type="date" name="tgl_selesai" value="{{ request('tgl_selesai') }}" class="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-400/20 transition-all">
             </div>
             <div class="w-full md:w-auto flex flex-col sm:flex-row gap-2">
-                <button type="submit" class="h-11 px-5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition shadow-lg flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider w-full sm:w-auto">
+                {{-- Tombol Filter Normal --}}
+                <button type="submit" formaction="{{ route('admin.rekap_cancel') }}" class="h-11 px-5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition shadow-lg flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider w-full sm:w-auto">
                     <i class="fa-solid fa-magnifying-glass"></i> Filter
                 </button>
-                <button type="submit" name="export" value="excel" class="h-11 px-5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition shadow-lg flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider w-full sm:w-auto">
+                {{-- Tombol Export Khusus --}}
+                <button type="submit" formaction="{{ route('admin.rekap_cancel.export') }}" class="h-11 px-5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition shadow-lg flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider w-full sm:w-auto">
                     <i class="fa-solid fa-file-excel"></i> Export
                 </button>
             </div>

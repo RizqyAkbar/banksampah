@@ -1,10 +1,12 @@
 <?php
 
-namespace App\Http\Controllers\Admin; // Baris ini SANGAT PENTING
+namespace App\Http\Controllers\Admin; 
 
 use App\Http\Controllers\Controller;
-use App\Models\Service; // Pastikan model Service sudah dibuat
+use App\Models\Service; 
 use Illuminate\Http\Request;
+use App\Exports\ServiceExport;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ServiceController extends Controller
 {
@@ -20,45 +22,10 @@ class ServiceController extends Controller
             });
         }
 
-        // --- LOGIKA EXPORT EXCEL (CSV Format) ---
+        // --- LOGIKA EXPORT EXCEL ---
+        // Saat tombol Export diklik (membawa payload export=excel), sistem akan memanggil ServiceExport
         if ($request->has('export') && $request->export == 'excel') {
-            $servicesExport = $query->orderBy('nama_layanan', 'asc')->get();
-            $filename = "Master_Data_Layanan_" . date('Ymd_His') . ".csv";
-            
-            $headers = [
-                "Content-type"        => "text/csv",
-                "Content-Disposition" => "attachment; filename=$filename",
-                "Pragma"              => "no-cache",
-                "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
-                "Expires"             => "0"
-            ];
-
-            $columns = [
-                'No', 'Nama Layanan', 'Jenis Armada', 'Harga Dasar (HPP)', 'Harga Jual'
-            ];
-
-            $callback = function() use($servicesExport, $columns) {
-                $file = fopen('php://output', 'w');
-                // Menambahkan BOM agar Microsoft Excel bisa membaca format UTF-8
-                fputs($file, $bom = (chr(0xEF) . chr(0xBB) . chr(0xBF))); 
-                fputcsv($file, $columns); 
-
-                foreach ($servicesExport as $index => $s) {
-                    $row['No'] = $index + 1;
-                    $row['Nama Layanan'] = $s->nama_layanan;
-                    $row['Jenis Armada'] = $s->armada ?: '-'; 
-                    $row['Harga Dasar (HPP)'] = $s->harga_dasar;
-                    $row['Harga Jual'] = $s->harga_jual;
-
-                    fputcsv($file, array(
-                        $row['No'], $row['Nama Layanan'], $row['Jenis Armada'], 
-                        $row['Harga Dasar (HPP)'], $row['Harga Jual']
-                    ));
-                }
-                fclose($file);
-            };
-
-            return response()->stream($callback, 200, $headers);
+            return Excel::download(new ServiceExport, 'Master_Layanan_' . date('d-m-Y') . '.xlsx');
         }
 
         // --- TAMPILAN VIEW NORMAL DENGAN PAGINATION ---
@@ -68,10 +35,16 @@ class ServiceController extends Controller
         return view('admin.master_layanan', compact('services'));
     }
 
+    // Method ini bisa dibiarkan saja (sebagai cadangan)
+    public function exportExcel()
+    {
+        return Excel::download(new ServiceExport, 'Master_Layanan_' . date('d-m-Y') . '.xlsx');
+    }
+
     public function store(Request $request) {
         $request->validate([
             'nama_layanan' => 'required',
-            'armada' => 'required', // Tambahkan validasi ini
+            'armada' => 'required', 
             'harga_dasar' => 'required|numeric',
             'harga_jual' => 'required|numeric',
         ]);

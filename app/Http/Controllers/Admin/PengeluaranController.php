@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Pengeluaran; // Pastikan Model sudah dibuat
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\PengeluaranExport;
 
 class PengeluaranController extends Controller
 {
@@ -145,5 +147,13 @@ class PengeluaranController extends Controller
         $pengeluaran->update($data);
 
         return redirect()->route('admin.pengeluaran')->with('success', 'Data pengeluaran berhasil diperbarui!');
+    }
+
+    public function exportExcel(Request $request)
+    {
+        return Excel::download(
+            new PengeluaranExport($request), 
+            "Rekap_Pengeluaran_" . date('d-m-Y') . ".xlsx"
+        );
     }
 }

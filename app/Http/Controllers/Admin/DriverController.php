@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Driver;
 use Illuminate\Http\Request;
+use App\Exports\DriverExport;
+use Maatwebsite\Excel\Facades\Excel;
 
 class DriverController extends Controller
 {
@@ -23,55 +25,23 @@ class DriverController extends Controller
             });
         }
 
-        // --- LOGIKA EXPORT EXCEL (CSV Format) ---
+        // --- LOGIKA EXPORT EXCEL ---
         if ($request->has('export') && $request->export == 'excel') {
-            $driversExport = $query->orderBy('nama_sopir', 'asc')->get();
-            $filename = "Master_Data_Sopir_" . date('Ymd_His') . ".csv";
-            
-            $headers = [
-                "Content-type"        => "text/csv",
-                "Content-Disposition" => "attachment; filename=$filename",
-                "Pragma"              => "no-cache",
-                "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
-                "Expires"             => "0"
-            ];
-
-            $columns = [
-                'No', 'Nama Sopir', 'Nomor WhatsApp', 'Plat Armada Default', 'Tgl Didaftarkan'
-            ];
-
-            $callback = function() use($driversExport, $columns) {
-                $file = fopen('php://output', 'w');
-                // Menambahkan BOM agar Excel membaca format UTF-8
-                fputs($file, $bom = (chr(0xEF) . chr(0xBB) . chr(0xBF))); 
-                fputcsv($file, $columns); 
-
-                foreach ($driversExport as $index => $d) {
-                    $row['No'] = $index + 1;
-                    $row['Nama Sopir'] = $d->nama_sopir;
-                    $row['Nomor WhatsApp'] = "+" . $d->no_wa_sopir; 
-                    $row['Plat Armada Default'] = $d->plat_armada ?: '-';
-                    $row['Tgl Didaftarkan'] = \Carbon\Carbon::parse($d->created_at)->format('Y-m-d H:i');
-
-                    fputcsv($file, array(
-                        $row['No'], $row['Nama Sopir'], $row['Nomor WhatsApp'], 
-                        $row['Plat Armada Default'], $row['Tgl Didaftarkan']
-                    ));
-                }
-                fclose($file);
-            };
-
-            return response()->stream($callback, 200, $headers);
+            return Excel::download(new DriverExport, 'Data_Master_Sopir_' . date('d-m-Y') . '.xlsx');
         }
 
         // --- TAMPILAN NORMAL (MENGGUNAKAN PAGINATE, BUKAN GET) ---
-        // Ini yang menyelesaikan error currentPage() does not exist
         $drivers = $query->orderBy('nama_sopir', 'asc')->paginate(15);
         
         // Mempertahankan parameter pencarian saat pindah halaman
         $drivers->appends($request->all());
 
         return view('admin.master_sopir', compact('drivers'));
+    }
+
+    public function exportExcel()
+    {
+        return Excel::download(new DriverExport, 'Data_Master_Sopir_' . date('Y-m-d') . '.xlsx');
     }
 
     // Simpan sopir baru

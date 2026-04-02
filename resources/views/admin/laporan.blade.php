@@ -67,6 +67,9 @@
                 <button type="submit" class="h-11 px-8 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition shadow-lg flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider w-full sm:w-auto">
                     <i class="fa-solid fa-magnifying-glass"></i> Filter Laporan
                 </button>
+                <button type="submit" name="export" value="excel" class="h-11 px-8 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition shadow-lg flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider w-full sm:w-auto">
+                    <i class="fa-solid fa-file-excel"></i> Export Laporan
+                </button>
             </div>
         </form>
     </div>
@@ -118,7 +121,6 @@
             <table class="w-full text-left text-sm text-slate-600">
                 <thead class="bg-slate-50 text-xs uppercase text-slate-500 border-b">
                     <tr>
-                        {{-- REVISI: Tambahkan whitespace-nowrap & min-w agar tabel tidak tergencet di mobile --}}
                         <th class="px-6 py-4 font-bold text-center whitespace-nowrap w-16">No</th>
                         <th class="px-6 py-4 whitespace-nowrap min-w-[130px]">Tanggal Jual</th>
                         <th class="px-6 py-4 whitespace-nowrap min-w-[200px]">Nama Customer</th>
