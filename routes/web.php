@@ -74,6 +74,7 @@ Route::prefix('admin')->group(function () {
         Route::delete('/order-item/{id}/destroy', [OrderController::class, 'destroyItem'])->name('admin.item.destroy');
 
         Route::get('/laporan', [OrderController::class, 'laporan'])->name('admin.laporan');
+        Route::post('/admin/invoice/{id}/send-wa', [App\Http\Controllers\Admin\OrderController::class, 'sendInvoiceWA'])->name('admin.invoice.send_wa');
 
         // Master Sopir
         Route::get('/master-sopir', [DriverController::class, 'index'])->name('admin.master_sopir.index');
@@ -87,6 +88,11 @@ Route::prefix('admin')->group(function () {
         Route::get('/invoice/export', [OrderController::class, 'exportExcel'])->name('admin.invoice.export');
         Route::get('/payment/export', [OrderController::class, 'exportPaymentExcel'])->name('admin.payment.export');
         Route::get('/laporan/export', [OrderController::class, 'exportLaporan'])->name('admin.laporan.export');
+
+        // Route API untuk Auto-fill Customer
+        Route::get('/customers', [\App\Http\Controllers\Admin\CustomerController::class, 'index'])->name('admin.customer_index'); 
+        Route::get('/customers/search', [\App\Http\Controllers\Admin\CustomerController::class, 'search'])->name('admin.customer.search');
+        Route::get('/customers/api-search', [\App\Http\Controllers\Admin\CustomerController::class, 'apiSearch'])->name('admin.customer.api_search');
 
         // REVISI MASTER LAYANAN (Disamakan menggunakan {id})
         Route::prefix('master-layanan')->name('admin.master_layanan.')->group(function () {

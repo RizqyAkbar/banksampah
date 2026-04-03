@@ -18,14 +18,18 @@ use App\Exports\LaporanExport;
 
 class OrderController extends Controller
 {
-    // 1. Menampilkan Form Input Order
-    public function create()
+    // 1. Menampilkan Form Input Order (DENGAN FITUR RECALL)
+    public function create(Request $request)
     {
-        // Ambil semua data layanan dari Master Layanan
         $masterLayanan = Service::orderBy('nama_layanan', 'asc')->get();
 
-        // Kirim data tersebut ke view dengan nama variabel yang sama
-        return view('admin.input_order', compact('masterLayanan'));
+        // Tangkap request recall dari Database Pelanggan
+        $recallCustomer = null;
+        if ($request->has('recall_wa')) {
+            $recallCustomer = \App\Models\Customer::where('no_wa', $request->recall_wa)->first();
+        }
+
+        return view('admin.input_order', compact('masterLayanan', 'recallCustomer'));
     }
 
     public function exportExcel(Request $request)
@@ -59,7 +63,7 @@ class OrderController extends Controller
         return Excel::download(new LaporanExport($request), "Laporan_Performa_Jasa_{$tgl}.xlsx");
     }
 
-    // 2. Menyimpan Input Order Awal (REVISI UNTUK OPSI LAINNYA)
+    // 2. Menyimpan Input Order & KIRIM WA (INTEGRASI FONNTE API)
     public function store(Request $request)
     {
         $request->validate([
@@ -69,6 +73,7 @@ class OrderController extends Controller
             'penjadwalan'    => 'required|date',
             'layanan'        => 'required|array',
             'armada'         => 'required|array',
+            'jumlah_rit'     => 'required|array',
         ]);
 
         $nomorBersih = ltrim($request->no_wa, '0');
@@ -88,8 +93,39 @@ class OrderController extends Controller
         $nomorUrut = str_pad($nextIncrement, 3, '0', STR_PAD_LEFT);
         $noInvoiceFinal = "INV-$tanggalFormat-$nomorUrut";
 
-        $jumlahOrder = Order::where('no_wa', $noWaFinal)->count();
-        $statusPelanggan = ($jumlahOrder >= 2) ? 'Pelanggan' : 'Konsumen Baru';
+        // === LOGIKA CUSTOMER DATABASE (BARU) ===
+        // Cari apakah nomor WA ini sudah pernah order sebelumnya di tabel customers
+        $customer = \App\Models\Customer::where('no_wa', $noWaFinal)->first();
+
+        if ($customer) {
+            // Jika sudah ada, tambah jumlah ordernya + 1
+            $newJumlahOrder = $customer->jumlah_order + 1;
+            $newStatus = ($newJumlahOrder >= 2) ? 'Pelanggan' : 'Konsumen Baru';
+
+            // Update profil customer yang sudah ada
+            $customer->update([
+                'nama_pelanggan'   => $request->nama_pelanggan, 
+                'alamat'           => $request->alamat, 
+                'link_maps'        => $request->link_maps, 
+                'jumlah_order'     => $newJumlahOrder,
+                'status_pelanggan' => $newStatus,
+            ]);
+            
+            $statusPelanggan = $newStatus;
+        } else {
+            // Jika belum ada, buat profil customer baru
+            \App\Models\Customer::create([
+                'nama_pelanggan'   => $request->nama_pelanggan,
+                'no_wa'            => $noWaFinal,
+                'alamat'           => $request->alamat,
+                'link_maps'        => $request->link_maps,
+                'jumlah_order'     => 1,
+                'status_pelanggan' => 'Konsumen Baru',
+            ]);
+            
+            $statusPelanggan = 'Konsumen Baru';
+        }
+        // ======================================
 
         $order = Order::create([
             'nama_pelanggan'   => $request->nama_pelanggan,
@@ -105,32 +141,95 @@ class OrderController extends Controller
             'total_keuntungan' => 0,
         ]);
 
+        $listLayanan = [];
+        $listArmada = [];
+        $listEstimasi = [];
+
         foreach ($request->layanan as $index => $jenisLayanan) {
-            // Backup logic: Jika armada null dari request, coba cari di master
             $armadaFinal = $request->armada[$index];
 
             if (empty($armadaFinal)) {
                 $service = Service::where('nama_layanan', $jenisLayanan)->first();
-                $armadaFinal = $service ? $service->armada : 'Umum'; // Fallback ke 'Umum' jika benar-benar tidak ada
+                $armadaFinal = $service ? $service->armada : 'Umum'; 
             }
 
             $namaJasaFinal = ($jenisLayanan === 'LAINNYA')
                 ? ($request->layanan_manual[$index] ?? 'Jasa Tidak Diketahui')
                 : $jenisLayanan;
 
-            $hpp = $request->harga_dasar[$index] ?? 0;
-            $harga = $request->harga_jual[$index] ?? 0;
+            $rit = $request->jumlah_rit[$index] ?? 0;
 
             $order->items()->create([
                 'jenis_layanan' => $namaJasaFinal,
-                'armada'        => $armadaFinal, // Menggunakan variabel yang sudah dicek
-                'harga_per_rit' => $harga,
-                'hpp_per_rit'   => $hpp,
+                'armada'        => $armadaFinal, 
+                'jumlah_rit'    => $rit,
+                'harga_per_rit' => 0,
+                'hpp_per_rit'   => 0,
                 'status_item'   => 'Aktif',
             ]);
+
+            // Simpan array untuk teks WA
+            $listLayanan[] = $namaJasaFinal;
+            $listArmada[] = $armadaFinal;
+            $listEstimasi[] = $rit . " " . $armadaFinal;
         }
 
-        return redirect()->back()->with('success', 'Order baru berhasil disimpan dengan nomor ' . $noInvoiceFinal);
+        // ==========================================
+        // BUILD TEMPLATE PESAN WA
+        // ==========================================
+        Carbon::setLocale('id');
+        $tanggalIndo = Carbon::parse($request->penjadwalan)->translatedFormat('l, d F Y');
+
+        $pesanWA = "Formulir Order *JURAGAN URUG*\n";
+        $pesanWA .= "_______\n";
+        $pesanWA .= "*Tanggal :* " . $tanggalIndo . "\n";
+        $pesanWA .= "*Nama :* " . $request->nama_pelanggan . "\n";
+        $pesanWA .= "*Lokasi :* " . $request->alamat . "\n";
+        
+        // Link otomatis bisa diklik di WA selama diawali http/https
+        if ($request->link_maps) {
+            $pesanWA .= trim($request->link_maps) . "\n";
+        }
+        
+        $pesanWA .= "_______\n";
+        $pesanWA .= "*Jenis Layanan :* " . implode(', ', array_unique($listLayanan)) . "\n";
+        $pesanWA .= "*Armada :* " . implode(', ', array_unique($listArmada)) . "\n";
+        $pesanWA .= "*Estimasi :* " . implode(', ', $listEstimasi) . "\n";
+        $pesanWA .= "*Foto Proyek :* _Terlampir_\n";
+        $pesanWA .= "_______\n";
+        $pesanWA .= "*Catatan penting:*\n" . ($request->catatan ?? '-');
+
+        // ==========================================
+        // EKSEKUSI API FONNTE
+        // ==========================================
+        $curl = curl_init();
+        curl_setopt_array($curl, array(
+            CURLOPT_URL => 'https://api.fonnte.com/send',
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_ENCODING => '',
+            CURLOPT_MAXREDIRS => 10,
+            CURLOPT_TIMEOUT => 0,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+            CURLOPT_CUSTOMREQUEST => 'POST',
+            CURLOPT_POSTFIELDS => array(
+                'target' => $noWaFinal,
+                'message' => $pesanWA, 
+            ),
+            CURLOPT_HTTPHEADER => array(
+                'Authorization: 3ujshugpoSMCyDpKjVtJ' // Token Client
+            ),
+        ));
+        $response = curl_exec($curl);
+        curl_close($curl);
+
+        // Buat wa.me link manual sebagai backup tombol
+        $waLink = 'https://wa.me/' . $noWaFinal . '?text=' . urlencode($pesanWA);
+
+        return redirect()->back()->with([
+            'success' => 'Order tersimpan & Formulir Order sedang dikirim otomatis oleh sistem ke WA Pelanggan!',
+            'wa_link' => $waLink
+        ]);
     }
 
     // 3. Halaman REKAP ORDER (DENGAN FITUR SEARCH, FILTER TANGGAL & EXPORT)
@@ -192,7 +291,7 @@ class OrderController extends Controller
         return view('admin.rekap_order_edit', compact('order'));
     }
 
-    // 5. UPDATE REKAP (SINKRONISASI NAMA KOLOM)
+    // 5. UPDATE REKAP (SINKRONISASI NAMBAH/KURANG JASA)
     public function update(Request $request, $id)
     {
         $order = Order::with('items')->findOrFail($id);
@@ -202,99 +301,142 @@ class OrderController extends Controller
             'jumlah_rit' => 'required|array',
             'harga_per_rit' => 'required|array',
             'hpp_per_rit' => 'required|array',
-            'alasan_perubahan' => 'nullable|string|max:255', // Alasan yang kamu tulis manual ditangkap di sini
+            'alasan_perubahan' => 'nullable|string|max:255', 
         ]);
 
         $totalPendapatanOrder = 0;
         $totalKeuntunganOrder = 0;
         $perubahanKolektif = [];
 
+        // --- 1. PROSES HAPUS LAYANAN (Jika admin menghapus baris dari DOM) ---
+        $submittedItemIds = collect($request->item_id)->filter(function ($val) {
+            return $val !== 'new'; // Buang ID yang bertuliskan 'new'
+        })->toArray();
+
+        // Cari item di database yang ID-nya TIDAK ADA di form yang dikirimkan (artinya telah dihapus admin)
+        $itemsToDelete = $order->items()->whereNotIn('id', $submittedItemIds)->get();
+        foreach($itemsToDelete as $delItem) {
+            $perubahanKolektif[] = "Layanan Dihapus: [" . $delItem->jenis_layanan . " - " . $delItem->armada . "]";
+            $delItem->delete();
+        }
+
+        // --- 2. PROSES UPDATE & INSERT LAYANAN BARU ---
         foreach ($request->item_id as $index => $itemId) {
-            $item = OrderItem::findOrFail($itemId);
-
-            $sopirLama = $item->nama_sopir;
-            $platLama  = $item->plat_armada;
-            $armadaLama = $item->armada;
-            $layananLama = $item->jenis_layanan;
-
-            // Logika Jasa Lainnya
+            // Ambil Data dari Form
             $jenisLayananInput = $request->jenis_layanan[$index];
             $jenisLayananFinal = ($jenisLayananInput === 'LAINNYA')
-                ? ($request->layanan_manual[$index] ?? $item->jenis_layanan)
+                ? ($request->layanan_manual[$index] ?? $jenisLayananInput)
                 : $jenisLayananInput;
 
-            $isArmadaChanged = ($armadaLama != $request->armada[$index]);
-            $isLayananChanged = ($layananLama != $jenisLayananFinal);
-            $isPersonelChanged = ($sopirLama != $request->nama_sopir[$index]) || ($platLama != $request->plat_armada[$index]);
+            $armadaFinal = $request->armada[$index];
+            $sopirFinal  = $request->nama_sopir[$index];
+            $platFinal   = $request->plat_armada[$index];
+            $ritFinal    = $request->jumlah_rit[$index] ?? 0;
+            $hargaFinal  = $request->harga_per_rit[$index] ?? 0;
+            $hppFinal    = $request->hpp_per_rit[$index] ?? 0;
 
-            $changes = [];
-
-            // 1. Armada atau Layanan berubah? Catat!
-            if ($isArmadaChanged || $isLayananChanged) {
-                if ($isLayananChanged) $changes[] = "Jasa [$layananLama] -> [$jenisLayananFinal]";
-                if ($isArmadaChanged) $changes[] = "Armada [$armadaLama] -> [{$request->armada[$index]}]";
-            }
-
-            // 2. Sopir berubah dan data lama tidak kosong? Catat!
-            if ($isPersonelChanged && !empty($sopirLama)) {
-                $changes[] = "Sopir [" . ($sopirLama ?: '-') . " (" . ($platLama ?: '-') . ")] -> [" . ($request->nama_sopir[$index] ?: '-') . " (" . ($request->plat_armada[$index] ?: '-') . ")]";
-            }
-
-            if (count($changes) > 0) {
-                $labelRevisi = "REVISI OPERASIONAL";
-                if ($isPersonelChanged && ($isArmadaChanged || $isLayananChanged)) $labelRevisi = "REVISI UNIT & PERSONEL";
-                elseif ($isPersonelChanged) $labelRevisi = "REVISI PERSONEL";
-                elseif ($isArmadaChanged || $isLayananChanged) $labelRevisi = "REVISI UNIT ARMADA";
-
-                $detailLog = "Layanan #" . ($index + 1) . " [$labelRevisi]: " . implode(", ", $changes);
-                $perubahanKolektif[] = $detailLog;
-            }
-
-            // --- REVISI LOGIKA WHATSAPP (CARA 1) ---
+            // Logika Format WhatsApp Sopir
             $noWaInput = $request->no_wa_sopir[$index];
             $noWaFinal = null;
-
             if ($noWaInput) {
-                $nomorBersih = ltrim($noWaInput, '0'); // Hapus angka 0 di depan
+                $nomorBersih = ltrim($noWaInput, '0');
                 if (!str_starts_with($nomorBersih, '62')) {
                     $noWaFinal = '62' . $nomorBersih;
                 } else {
                     $noWaFinal = $nomorBersih;
                 }
             }
-            // ---------------------------------------
 
-            // Update data item ke database
-            $item->update([
-                'jenis_layanan' => $jenisLayananFinal,
-                'armada'        => $request->armada[$index],
-                'nama_sopir'    => $request->nama_sopir[$index],
-                'no_wa_sopir'   => $noWaFinal, // Menggunakan nomor yang sudah diperbaiki
-                'plat_armada'   => $request->plat_armada[$index],
-                'jumlah_rit'    => $request->jumlah_rit[$index] ?? 0,
-                'harga_per_rit' => $request->harga_per_rit[$index] ?? 0,
-                'hpp_per_rit'   => $request->hpp_per_rit[$index] ?? 0,
-                'subtotal_pendapatan' => ($request->jumlah_rit[$index] ?? 0) * ($request->harga_per_rit[$index] ?? 0),
-                'subtotal_keuntungan' => (($request->jumlah_rit[$index] ?? 0) * ($request->harga_per_rit[$index] ?? 0)) - (($request->jumlah_rit[$index] ?? 0) * ($request->hpp_per_rit[$index] ?? 0)),
-            ]);
+            // Perhitungan Subtotal
+            $subPendapatan = $ritFinal * $hargaFinal;
+            $subKeuntungan = $subPendapatan - ($ritFinal * $hppFinal);
 
-            $totalPendapatanOrder += $item->subtotal_pendapatan;
-            $totalKeuntunganOrder += $item->subtotal_keuntungan;
+            // JIKA BARIS TERSEBUT ADALAH DATA BARU YANG DITAMBAH DI VIEW
+            if ($itemId === 'new') {
+                $order->items()->create([
+                    'jenis_layanan' => $jenisLayananFinal,
+                    'armada'        => $armadaFinal,
+                    'nama_sopir'    => $sopirFinal,
+                    'no_wa_sopir'   => $noWaFinal,
+                    'plat_armada'   => $platFinal,
+                    'jumlah_rit'    => $ritFinal,
+                    'harga_per_rit' => $hargaFinal,
+                    'hpp_per_rit'   => $hppFinal,
+                    'subtotal_pendapatan' => $subPendapatan,
+                    'subtotal_keuntungan' => $subKeuntungan,
+                    'status_item'   => 'Aktif',
+                ]);
+                $perubahanKolektif[] = "Layanan Baru Ditambahkan: [$jenisLayananFinal - $armadaFinal]";
+                
+                $totalPendapatanOrder += $subPendapatan;
+                $totalKeuntunganOrder += $subKeuntungan;
+            } 
+            // JIKA BARIS TERSEBUT ADALAH UPDATE DARI DATA LAMA
+            else {
+                $item = OrderItem::findOrFail($itemId);
+
+                $sopirLama = $item->nama_sopir;
+                $platLama  = $item->plat_armada;
+                $armadaLama = $item->armada;
+                $layananLama = $item->jenis_layanan;
+
+                $isArmadaChanged = ($armadaLama != $armadaFinal);
+                $isLayananChanged = ($layananLama != $jenisLayananFinal);
+                $isPersonelChanged = ($sopirLama != $sopirFinal) || ($platLama != $platFinal);
+
+                $changes = [];
+
+                if ($isArmadaChanged || $isLayananChanged) {
+                    if ($isLayananChanged) $changes[] = "Jasa [$layananLama] -> [$jenisLayananFinal]";
+                    if ($isArmadaChanged) $changes[] = "Armada [$armadaLama] -> [$armadaFinal]";
+                }
+
+                if ($isPersonelChanged && !empty($sopirLama)) {
+                    $changes[] = "Sopir [" . ($sopirLama ?: '-') . " (" . ($platLama ?: '-') . ")] -> [" . ($sopirFinal ?: '-') . " (" . ($platFinal ?: '-') . ")]";
+                }
+
+                if (count($changes) > 0) {
+                    $labelRevisi = "REVISI OPERASIONAL";
+                    if ($isPersonelChanged && ($isArmadaChanged || $isLayananChanged)) $labelRevisi = "REVISI UNIT & PERSONEL";
+                    elseif ($isPersonelChanged) $labelRevisi = "REVISI PERSONEL";
+                    elseif ($isArmadaChanged || $isLayananChanged) $labelRevisi = "REVISI UNIT ARMADA";
+
+                    $detailLog = "Layanan #" . ($index + 1) . " [$labelRevisi]: " . implode(", ", $changes);
+                    $perubahanKolektif[] = $detailLog;
+                }
+
+                $item->update([
+                    'jenis_layanan' => $jenisLayananFinal,
+                    'armada'        => $armadaFinal,
+                    'nama_sopir'    => $sopirFinal,
+                    'no_wa_sopir'   => $noWaFinal, 
+                    'plat_armada'   => $platFinal,
+                    'jumlah_rit'    => $ritFinal,
+                    'harga_per_rit' => $hargaFinal,
+                    'hpp_per_rit'   => $hppFinal,
+                    'subtotal_pendapatan' => $subPendapatan,
+                    'subtotal_keuntungan' => $subKeuntungan,
+                ]);
+
+                $totalPendapatanOrder += $subPendapatan;
+                $totalKeuntunganOrder += $subKeuntungan;
+            }
         }
 
-        // SIMPAN ALASAN MANUAL DARI FORM KE DATABASE
+        // SIMPAN SEMUA LOG PERUBAHAN KE DATABASE
         if (count($perubahanKolektif) > 0) {
             foreach ($perubahanKolektif as $logItem) {
                 OrderLog::create([
                     'order_id'   => $order->id,
                     'perubahan'  => 'Update Operasional',
                     'detail'     => $logItem,
-                    'alasan'     => $request->alasan_perubahan ?: 'Perubahan data operasional', // Alasan manual masuk sini
+                    'alasan'     => $request->alasan_perubahan ?: 'Perubahan data operasional', 
                     'admin_name' => Auth::user()->name ?? 'Admin Juragan',
                 ]);
             }
         }
 
+        // UPDATE TOTAL NOTA KE TABEL ORDERS
         $order->update([
             'total_pendapatan' => $totalPendapatanOrder,
             'total_keuntungan' => $totalKeuntunganOrder,
@@ -303,7 +445,7 @@ class OrderController extends Controller
             'catatan'          => $request->catatan,
         ]);
 
-        return redirect()->route('admin.rekap_order')->with('success', 'Data Rekap Berhasil diperbarui!');
+        return redirect()->route('admin.rekap_order')->with('success', 'Data Rekap dan Layanan Berhasil diperbarui!');
     }
 
     // REVISI: Penambahan logika search, filter tanggal, dan export excel untuk Invoice Index
@@ -348,6 +490,57 @@ class OrderController extends Controller
         );
     }
 
+
+    // --- TAMBAHAN: FUNGSI KIRIM INVOICE OTOMATIS VIA FONNTE ---
+    public function sendInvoiceWA($id)
+    {
+        $order = Order::with(['items' => function ($query) {
+            $query->where('status_item', 'Aktif');
+        }])->findOrFail($id);
+
+        // Format ulang nomor WA untuk jaga-jaga
+        $noWaFinal = preg_replace('/[^0-9]/', '', $order->no_wa);
+        if (!str_starts_with($noWaFinal, '62')) {
+            $noWaFinal = '62' . ltrim($noWaFinal, '0');
+        }
+
+        // Merakit Pesan Invoice (Update Template Client)
+        $pesanWA = "Halo " . $order->nama_pelanggan . ",\n\n";
+        $pesanWA .= "Berikut kami sampaikan rincian tagihan layanan dari Juragan Urug:\n\n";
+        
+        foreach($order->items as $srv) {
+            $pesanWA .= "• " . $srv->jenis_layanan . " (" . $srv->jumlah_rit . " rit): Rp " . number_format($srv->jumlah_rit * $srv->harga_per_rit, 0, ',', '.') . "\n";
+        }
+        
+        $pesanWA .= "\nTotal Tagihan: Rp " . number_format($order->total_pendapatan, 0, ',', '.') . "\n\n";
+        $pesanWA .= "Mohon untuk dapat dilakukan pembayaran sesuai dengan total tagihan di atas.\n\n";
+        $pesanWA .= "Terima kasih atas kepercayaan Anda menggunakan layanan Juragan Urug.";
+
+        // Hit ke API Fonnte
+        $curl = curl_init();
+        curl_setopt_array($curl, array(
+            CURLOPT_URL => 'https://api.fonnte.com/send',
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_ENCODING => '',
+            CURLOPT_MAXREDIRS => 10,
+            CURLOPT_TIMEOUT => 0,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+            CURLOPT_CUSTOMREQUEST => 'POST',
+            CURLOPT_POSTFIELDS => array(
+                'target' => $noWaFinal,
+                'message' => $pesanWA, 
+            ),
+            CURLOPT_HTTPHEADER => array(
+                'Authorization: 3ujshugpoSMCyDpKjVtJ'
+            ),
+        ));
+        $response = curl_exec($curl);
+        curl_close($curl);
+
+        return redirect()->back()->with('success', 'Invoice berhasil dikirim ke WhatsApp Pelanggan!');
+    }
+
     // REVISI: Fungsi Detail untuk Modal Preview
     public function getDetail($id)
     {
@@ -373,12 +566,10 @@ class OrderController extends Controller
         return view('admin.invoice_print', compact('order'));
     }
 
-    // REVISI: Penambahan logika search, filter tanggal, dan export excel untuk Payment Index
+    // --- REVISI: PAYMENT INDEX MEMPRIORITASKAN 'BELUM LUNAS' DI ATAS ---
     public function paymentIndex(Request $request)
     {
-        // --- LOGIKA EXPORT EXCEL LANGSUNG MENGGUNAKAN PAYMENTEXPORT ---
         if ($request->has('export') && $request->export == 'excel') {
-            // Jika tanggal tidak diisi, berikan default range yang cukup luas (misal dari 2023)
             $tgl_mulai = $request->tgl_mulai ?: '2023-01-01'; 
             $tgl_selesai = $request->tgl_selesai ?: date('Y-m-d');
             
@@ -388,7 +579,6 @@ class OrderController extends Controller
             );
         }
 
-        // --- LOGIKA NORMAL (TAMPILAN WEB & PAGINATION) ---
         $query = Order::where('total_pendapatan', '>', 0)->where('status_order', 'Aktif');
 
         if ($request->filter == 'lunas') {
@@ -411,7 +601,15 @@ class OrderController extends Controller
             $query->whereBetween('penjadwalan', [$request->tgl_mulai, $request->tgl_selesai]);
         }
 
-        $orders = $query->orderBy('updated_at', 'desc')->paginate(10);
+        // PENGURUTAN PRIORITAS: Belum Lunas (1), Cicil (2), Lunas (3)
+        $orders = $query->orderByRaw("CASE 
+                                        WHEN status_pembayaran = 'Belum Lunas' THEN 1
+                                        WHEN status_pembayaran = 'Cicil' THEN 2
+                                        WHEN status_pembayaran = 'Lunas' THEN 3
+                                        ELSE 4 
+                                      END")
+                        ->orderBy('updated_at', 'desc')
+                        ->paginate(10);
         $orders->appends($request->all());
 
         return view('admin.payment_index', compact('orders'));

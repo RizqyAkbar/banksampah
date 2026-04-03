@@ -59,8 +59,8 @@
         box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1) !important;
     }
     .layanan-block { position: relative; }
+    .btn-remove { position: absolute; top: -10px; right: -10px; z-index: 10; }
 
-    /* Penyesuaian ketebalan input & SweetAlert khusus untuk Mobile */
     @media (max-width: 640px) {
         .form-input { padding: 0.6rem 0.75rem; font-size: 0.8rem; }
         .input-group-text-custom { padding: 0 0.5rem; font-size: 0.7rem; }
@@ -91,7 +91,6 @@
 @endsection
 
 @section('content')
-    {{-- Pemisahan Data Layanan (Pickup vs Dump) --}}
     @php
         $allServices = \App\Models\Service::all();
         $pickupServices = [];
@@ -133,9 +132,23 @@
                     </div>
                 </div>
 
-                <div class="space-y-6 sm:space-y-10">
+                {{-- TOMBOL TAMBAH JASA --}}
+                <div class="flex items-center justify-between mb-4 border-t border-slate-100 pt-6">
+                    <h3 class="text-xs sm:text-sm font-bold text-slate-400 uppercase tracking-widest">Daftar Layanan Jasa</h3>
+                    <button type="button" id="add-layanan" class="text-[10px] sm:text-xs font-bold text-green-600 hover:text-green-700 px-3 py-1.5 bg-green-50 rounded-lg transition-colors shadow-sm">
+                        <i class="fa-solid fa-plus mr-1"></i> Tambah Jasa
+                    </button>
+                </div>
+
+                {{-- CONTAINER LAYANAN --}}
+                <div class="space-y-6 sm:space-y-10" id="layanan-container">
                     @foreach($order->items as $index => $item)
                     <div class="layanan-block p-4 sm:p-6 rounded-2xl border border-slate-100 bg-white shadow-sm relative mt-4 sm:mt-0">
+                        {{-- TOMBOL HAPUS LAYANAN --}}
+                        <button type="button" class="btn-remove h-6 w-6 rounded-full bg-rose-500 text-white flex items-center justify-center hover:bg-rose-600 shadow-sm transition-all" onclick="removeItemDOM(this)">
+                            <i class="fa-solid fa-xmark text-[10px]"></i>
+                        </button>
+
                         <div class="absolute -top-3 left-4 sm:left-6 bg-slate-800 text-white px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">
                             Layanan #{{ $index + 1 }}
                         </div>
@@ -146,8 +159,6 @@
                         <input type="hidden" class="old-plat" name="plat_armada_lama[]" value="{{ $item->plat_armada }}">
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mt-2">
-                            
-                            {{-- REVISI: Dua Pilihan Select Bersandingan --}}
                             <div class="md:col-span-2">
                                 <p class="text-[10px] font-bold text-slate-400 uppercase mb-3">*Pilih salah satu jasa (Pickup ATAU Truk Dump)</p>
                                 
@@ -163,6 +174,8 @@
                                             @foreach($pickupServices as $layanan)
                                                 <option value="{{ $layanan->nama_layanan }}" 
                                                         data-armada="{{ $layanan->armada }}"
+                                                        data-dasar="{{ (int)$layanan->harga_dasar }}" 
+                                                        data-jual="{{ (int)$layanan->harga_jual }}"
                                                         {{ (!$isDump && $item->jenis_layanan == $layanan->nama_layanan && $item->armada == $layanan->armada) ? 'selected' : '' }}>
                                                     {{ $layanan->nama_layanan }} ({{ $layanan->armada }})
                                                 </option>
@@ -176,13 +189,14 @@
                                             @foreach($dumpServices as $layanan)
                                                 <option value="{{ $layanan->nama_layanan }}" 
                                                         data-armada="{{ $layanan->armada }}"
+                                                        data-dasar="{{ (int)$layanan->harga_dasar }}" 
+                                                        data-jual="{{ (int)$layanan->harga_jual }}"
                                                         {{ ($isDump && $item->jenis_layanan == $layanan->nama_layanan && $item->armada == $layanan->armada) ? 'selected' : '' }}>
                                                     {{ $layanan->nama_layanan }} ({{ $layanan->armada }})
                                                 </option>
                                             @endforeach
                                         </select>
                                     </div>
-                                    {{-- Hidden Input untuk dikirim ke Backend --}}
                                     <input type="text" name="jenis_layanan[]" value="{{ $item->jenis_layanan }}" class="real-jasa-input absolute w-0 h-0 opacity-0 pointer-events-none" tabindex="-1">
                                 </div>
                             </div>
@@ -255,8 +269,8 @@
                         <i class="fa-solid fa-circle-info text-blue-500" id="reasonIcon"></i>
                         Alasan Perubahan <span class="hidden sm:inline">(WAJIB JIKA GANTI ARMADA/SOPIR)</span><span class="inline sm:hidden">(WAJIB JIKA GANTI)</span>
                     </label>
-                    <input type="text" name="alasan_perubahan" id="alasanPerubahan" placeholder="Contoh: Sopir utama sakit..." class="form-input bg-white">
-                    <p id="errorText" class="text-[10px] text-red-500 mt-2 italic hidden font-bold">*Wajib diisi karena terdeteksi perubahan!</p>
+                    <input type="text" name="alasan_perubahan" id="alasanPerubahan" placeholder="Contoh: Tambah armada baru karena order membludak..." class="form-input bg-white">
+                    <p id="errorText" class="text-[10px] text-red-500 mt-2 italic hidden font-bold">*Wajib diisi karena terdeteksi perubahan layanan!</p>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mt-6 sm:mt-8">
@@ -323,24 +337,34 @@
 @section('extra_js')
 <script>
     const form = document.getElementById('formRekap');
+    const container = document.getElementById('layanan-container');
+    const addButton = document.getElementById('add-layanan');
     const inputAlasan = document.getElementById('alasanPerubahan');
     const containerAlasan = document.getElementById('reasonContainer');
     const labelAlasan = document.getElementById('reasonLabel');
     const iconAlasan = document.getElementById('reasonIcon');
     const errorText = document.getElementById('errorText');
 
-    // REVISI: Fungsi sinkronisasi untuk dua dropdown
+    let originalItemCount = {{ $order->items->count() }};
+
     function syncJasa(selectElement, type) {
         const block = selectElement.closest('.layanan-block');
         const pickupSelect = block.querySelector('.select-jasa-pickup');
         const dumpSelect = block.querySelector('.select-jasa-dump');
         const realInput = block.querySelector('.real-jasa-input');
         const inputArmada = block.querySelector('.input-armada');
+        
+        const inputHpp = block.querySelector('.hitung-hpp');
+        const inputJual = block.querySelector('.hitung-harga');
 
-        if (type === 'pickup' && selectElement.value !== "") {
-            dumpSelect.value = "";
-        } else if (type === 'dump' && selectElement.value !== "") {
-            pickupSelect.value = "";
+        // Jangan hapus value dropdown sebelah jika ini dipanggil otomatis (saat load)
+        // kecuali jika user yang benar-benar mengubah manual
+        if (event && event.type === 'change') {
+            if (type === 'pickup' && selectElement.value !== "") {
+                dumpSelect.value = "";
+            } else if (type === 'dump' && selectElement.value !== "") {
+                pickupSelect.value = "";
+            }
         }
 
         const activeSelect = (pickupSelect.value !== "") ? pickupSelect : ((dumpSelect.value !== "") ? dumpSelect : null);
@@ -348,13 +372,33 @@
         if (!activeSelect || activeSelect.value === "") {
             realInput.value = '';
             inputArmada.value = '';
+            
+            // Kosongkan harga HANYA JIKA memang user yang memicu (bukan dari default database lama)
+            if (inputHpp && inputJual && event && event.type === 'change') {
+                inputHpp.value = '0';
+                inputJual.value = '0';
+            }
         } else {
             const selectedOption = activeSelect.selectedOptions[0];
             realInput.value = activeSelect.value;
             inputArmada.value = selectedOption.getAttribute('data-armada') || '-';
+            
+            // Tarik harga otomatis jika harga saat ini 0 ATAU user yang mengubah
+            if (inputHpp && inputJual) {
+                const currentHpp = parseInt(inputHpp.value) || 0;
+                const currentJual = parseInt(inputJual.value) || 0;
+                
+                if ((currentHpp === 0 && currentJual === 0) || (event && event.type === 'change')) {
+                    inputHpp.value = selectedOption.getAttribute('data-dasar') || 0;
+                    inputJual.value = selectedOption.getAttribute('data-jual') || 0;
+                }
+            }
         }
         
-        checkChanges();
+        hitungTotalOtomatis();
+        if (event && event.type === 'change') {
+            checkChanges();
+        }
     }
 
     function autofillSopirDropdown(select) {
@@ -374,7 +418,112 @@
         checkChanges();
     }
 
+    window.removeItemDOM = function(btn) {
+        const item = btn.closest('.layanan-block');
+        item.remove();
+        hitungTotalOtomatis();
+        checkChanges();
+    };
+
+    addButton.addEventListener('click', () => {
+        const newItem = document.createElement('div');
+        newItem.className = 'layanan-block p-4 sm:p-6 rounded-2xl border border-green-200 bg-green-50/20 shadow-sm relative mt-6';
+        
+        newItem.innerHTML = `
+            <button type="button" class="btn-remove h-6 w-6 rounded-full bg-rose-500 text-white flex items-center justify-center hover:bg-rose-600 shadow-sm transition-all" onclick="removeItemDOM(this)">
+                <i class="fa-solid fa-xmark text-[10px]"></i>
+            </button>
+            <div class="absolute -top-3 left-4 sm:left-6 bg-green-600 text-white px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">
+                Layanan Tambahan Baru
+            </div>
+
+            <input type="hidden" name="item_id[]" value="new">
+            <input type="hidden" class="old-armada" name="armada_lama[]" value="">
+            <input type="hidden" class="old-sopir" name="nama_sopir_lama[]" value="">
+            <input type="hidden" class="old-plat" name="plat_armada_lama[]" value="">
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mt-2">
+                <div class="md:col-span-2">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase mb-3">*Pilih salah satu jasa (Pickup ATAU Truk Dump)</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 mb-4">
+                        <div class="jasa-select-wrapper">
+                            <label class="mb-1.5 sm:mb-2 block text-[10px] font-bold text-blue-600 uppercase">1. Jasa Pickup</label>
+                            <select class="form-input select-jasa-pickup border-blue-100 focus:border-blue-400" onchange="syncJasa(this, 'pickup')">
+                                <option value="">-- Pilih Jasa Pickup --</option>
+                                @foreach($pickupServices as $layanan)
+                                    <option value="{{ $layanan->nama_layanan }}" data-armada="{{ $layanan->armada }}" data-dasar="{{ (int)$layanan->harga_dasar }}" data-jual="{{ (int)$layanan->harga_jual }}">{{ $layanan->nama_layanan }} ({{ $layanan->armada }})</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="jasa-select-wrapper">
+                            <label class="mb-1.5 sm:mb-2 block text-[10px] font-bold text-orange-600 uppercase">2. Jasa Truk Dump</label>
+                            <select class="form-input select-jasa-dump border-orange-100 focus:border-orange-400" onchange="syncJasa(this, 'dump')">
+                                <option value="">-- Pilih Jasa Truk Dump --</option>
+                                @foreach($dumpServices as $layanan)
+                                    <option value="{{ $layanan->nama_layanan }}" data-armada="{{ $layanan->armada }}" data-dasar="{{ (int)$layanan->harga_dasar }}" data-jual="{{ (int)$layanan->harga_jual }}">{{ $layanan->nama_layanan }} ({{ $layanan->armada }})</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <input type="text" name="jenis_layanan[]" class="real-jasa-input absolute w-0 h-0 opacity-0 pointer-events-none" tabindex="-1">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5 sm:mb-2">Jenis Armada</label>
+                    <input type="text" name="armada[]" class="form-input input-armada form-input-readonly new-armada" readonly required>
+                </div>
+
+                <div>
+                    <label class="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5 sm:mb-2">Nama Sopir</label>
+                    <select name="nama_sopir[]" class="form-input new-sopir" onchange="autofillSopirDropdown(this)">
+                        <option value="">-- Pilih Sopir --</option>
+                        @foreach(\App\Models\Driver::all() as $driver)
+                            <option value="{{ $driver->nama_sopir }}" data-wa="{{ $driver->no_wa_sopir }}" data-plat="{{ $driver->plat_armada }}">{{ $driver->nama_sopir }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5 sm:mb-2">No. WA Sopir</label>
+                    <div class="relative flex">
+                        <span class="inline-flex items-center px-3 sm:px-4 rounded-l-xl border border-r-0 border-slate-200 bg-slate-100 text-slate-500 text-xs sm:text-sm font-bold">+62</span>
+                        <input type="tel" name="no_wa_sopir[]" class="form-input rounded-l-none target-wa form-input-readonly" readonly>
+                    </div>
+                </div>
+
+                <div class="md:col-span-2">
+                    <label class="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5 sm:mb-2">Nomor Plat Armada</label>
+                    <input type="text" name="plat_armada[]" class="form-input uppercase new-plat target-plat form-input-readonly" readonly>
+                </div>
+
+                <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 bg-slate-50 p-3 sm:p-4 rounded-xl border border-slate-100 mt-1 sm:mt-2">
+                    <div>
+                        <label class="block text-[10px] sm:text-[11px] font-bold text-slate-500 mb-1 uppercase">Jumlah Rit</label>
+                        <input type="number" name="jumlah_rit[]" class="form-input hitung-rit" placeholder="0">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] sm:text-[11px] font-bold text-slate-500 mb-1 uppercase">Harga/Rit (Jual)</label>
+                        <div class="input-group-custom">
+                            <span class="input-group-text-custom">Rp</span>
+                            <input type="number" name="harga_per_rit[]" class="form-input form-input-grouped hitung-harga" placeholder="0">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] sm:text-[11px] font-bold text-slate-500 mb-1 uppercase">HPP/Rit (Modal)</label>
+                        <div class="input-group-custom">
+                            <span class="input-group-text-custom">Rp</span>
+                            <input type="number" name="hpp_per_rit[]" class="form-input form-input-grouped hitung-hpp" placeholder="0">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        container.appendChild(newItem);
+        checkChanges();
+    });
+
     function checkChanges() {
+        const currentItemCount = document.querySelectorAll('.layanan-block').length;
         const oldArmadas = document.querySelectorAll('.old-armada');
         const newArmadas = document.querySelectorAll('.new-armada');
         const oldSopirs = document.querySelectorAll('.old-sopir');
@@ -384,18 +533,24 @@
 
         let isChanged = false;
 
-        for (let i = 0; i < oldArmadas.length; i++) {
-            if (oldArmadas[i].value !== newArmadas[i].value) {
-                isChanged = true;
-                break;
-            }
+        if (currentItemCount !== originalItemCount) {
+            isChanged = true;
+        }
 
-            const hasOldSopir = oldSopirs[i].value.trim() !== "";
-            if (hasOldSopir) {
-                if (oldSopirs[i].value !== newSopirs[i].value || 
-                    oldPlats[i].value.toUpperCase() !== newPlats[i].value.toUpperCase()) {
+        if (!isChanged) {
+            for (let i = 0; i < oldArmadas.length; i++) {
+                if (oldArmadas[i].value !== newArmadas[i].value) {
                     isChanged = true;
                     break;
+                }
+
+                const hasOldSopir = oldSopirs[i].value.trim() !== "";
+                if (hasOldSopir) {
+                    if (oldSopirs[i].value !== newSopirs[i].value || 
+                        oldPlats[i].value.toUpperCase() !== newPlats[i].value.toUpperCase()) {
+                        isChanged = true;
+                        break;
+                    }
                 }
             }
         }
@@ -455,7 +610,19 @@
         }
     });
 
+    // REVISI: Trigger event saat halaman diload untuk mengisi harga yang kosong (0)
     window.onload = function() {
+        const selectsPickup = document.querySelectorAll('.select-jasa-pickup');
+        const selectsDump = document.querySelectorAll('.select-jasa-dump');
+        
+        selectsPickup.forEach(select => {
+            if(select.value !== "") syncJasa(select, 'pickup');
+        });
+        
+        selectsDump.forEach(select => {
+            if(select.value !== "") syncJasa(select, 'dump');
+        });
+
         hitungTotalOtomatis();
         checkChanges();
     };
@@ -463,8 +630,18 @@
     form.onsubmit = function(e) {
         checkChanges();
 
-        // Validasi pilihan jasa
         const inputs = document.querySelectorAll('.real-jasa-input');
+        if(inputs.length === 0) {
+            e.preventDefault();
+            Swal.fire({
+                icon: 'error',
+                title: 'Data Layanan Kosong',
+                text: 'Order harus memiliki minimal 1 jasa layanan!',
+                customClass: { popup: 'rounded-2xl shadow-lg border border-red-100', title: 'font-heading font-bold text-slate-900' }
+            });
+            return false;
+        }
+
         let isValid = true;
         inputs.forEach(input => {
             if(input.value.trim() === '') {

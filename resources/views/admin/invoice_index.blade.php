@@ -17,7 +17,6 @@
 @section('content')
     <h1 class="font-heading text-2xl font-bold text-slate-900 mb-6 sm:hidden">Invoice</h1>
 
-    {{-- GANTI BAGIAN FORM FILTER LAMA DENGAN INI --}}
     <div class="rounded-2xl border border-slate-100 bg-white p-4 sm:p-6 shadow-sm mb-6">
         <form method="GET" class="flex flex-col md:flex-row gap-4 items-end">
             <div class="w-full md:flex-1">
@@ -95,19 +94,13 @@
                                     <i class="fa-solid fa-print text-sm"></i>
                                 </button>
 
-                                @php
-                                    $pesanWA = "Halo *" . $item->nama_pelanggan . "*,\n\n";
-                                    $pesanWA .= "Berikut adalah rincian tagihan Anda dari *Juragan Urug*:\n";
-                                    foreach($item->items->where('status_item', 'Aktif') as $srv) {
-                                        $pesanWA .= "- " . $srv->jenis_layanan . " (" . $srv->jumlah_rit . " Rit): Rp " . number_format($srv->jumlah_rit * $srv->harga_per_rit, 0, ',', '.') . "\n";
-                                    }
-                                    $pesanWA .= "\n*Total Tagihan: Rp " . number_format($item->total_pendapatan, 0, ',', '.') . "*\n\n";
-                                    $pesanWA .= "Terima kasih atas kepercayaan Anda.";
-                                @endphp
-
-                                <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $item->no_wa) }}?text={{ urlencode($pesanWA) }}" target="_blank" class="p-2 rounded-lg bg-green-50 text-green-600 hover:bg-green-600 hover:text-white transition-all shadow-sm" title="Kirim WA">
-                                    <i class="fa-brands fa-whatsapp text-sm"></i>
-                                </a>
+                                {{-- REVISI: TOMBOL WA MENGGUNAKAN FORM POST KE API FONNTE --}}
+                                <form action="{{ route('admin.invoice.send_wa', $item->id) }}" method="POST" class="m-0 p-0 inline-block form-kirim-wa">
+                                    @csrf
+                                    <button type="button" class="btn-kirim-wa p-2 rounded-lg bg-green-50 text-green-600 hover:bg-green-600 hover:text-white transition-all shadow-sm" title="Kirim Invoice via WA (Otomatis)">
+                                        <i class="fa-brands fa-whatsapp text-sm"></i>
+                                    </button>
+                                </form>
 
                                 <form action="{{ route('admin.rekap_order.destroy', $item->id) }}" method="POST" class="m-0 p-0 form-hapus">
                                     @csrf @method('DELETE')
@@ -264,6 +257,7 @@
         }
 
         document.addEventListener('click', function(e) {
+            // Logika untuk tombol hapus
             if (e.target.closest('.btn-hapus')) {
                 const form = e.target.closest('.form-hapus');
                 Swal.fire({
@@ -277,6 +271,45 @@
                     heightAuto: false
                 }).then((result) => { if (result.isConfirmed) form.submit(); })
             }
+
+            // Logika baru untuk tombol Kirim WA (Fonnte API)
+            if (e.target.closest('.btn-kirim-wa')) {
+                const form = e.target.closest('.form-kirim-wa');
+                Swal.fire({
+                    title: 'Kirim Invoice ke Pelanggan?',
+                    text: "Invoice akan dikirim otomatis via WhatsApp melalui server (Fonnte).",
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#25D366',
+                    cancelButtonColor: '#64748b',
+                    confirmButtonText: '<i class="fa-brands fa-whatsapp mr-1"></i> Ya, Kirim!',
+                    cancelButtonText: 'Batal',
+                    reverseButtons: true,
+                    heightAuto: false
+                }).then((result) => { 
+                    if (result.isConfirmed) {
+                        Swal.fire({
+                            title: 'Mengirim Pesan...',
+                            text: 'Mohon tunggu sebentar.',
+                            allowOutsideClick: false,
+                            didOpen: () => { Swal.showLoading(); }
+                        });
+                        form.submit(); 
+                    } 
+                });
+            }
         });
     </script>
+
+    {{-- Alert notifikasi sukses setelah form disubmit --}}
+    @if(session('success'))
+    <script>
+        Swal.fire({
+            toast: true, position: 'top-end', icon: 'success',
+            title: 'Berhasil!', text: '{{ session('success') }}',
+            showConfirmButton: false, timer: 4000,
+            customClass: { popup: 'rounded-2xl shadow-lg border border-green-100', title: 'font-heading font-bold text-slate-900' }
+        });
+    </script>
+    @endif
 @endsection

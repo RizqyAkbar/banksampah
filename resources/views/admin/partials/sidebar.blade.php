@@ -39,9 +39,13 @@
         <i class="fa-solid fa-id-card w-5 text-center text-lg {{ request()->routeIs('admin.master_sopir.*') ? '' : 'text-slate-400' }}"></i> Database Sopir
     </a>
 
-    {{-- REVISI: Penambahan Menu Database Layanan --}}
     <a href="{{ route('admin.master_layanan.index') }}" class="flex items-center gap-3 rounded-xl {{ request()->routeIs('admin.master_layanan.*') ? 'bg-green-50 text-green-700 font-semibold' : 'text-slate-600 hover:bg-slate-50 font-medium' }} px-4 py-3.5 text-sm transition-colors">
         <i class="fa-solid fa-layer-group w-5 text-center text-lg {{ request()->routeIs('admin.master_layanan.*') ? '' : 'text-slate-400' }}"></i> Database Layanan
+    </a>
+
+    {{-- REVISI: Penambahan Menu Database Pelanggan --}}
+    <a href="{{ route('admin.customer_index') }}" class="flex items-center gap-3 rounded-xl {{ request()->routeIs('admin.customer_index') ? 'bg-green-50 text-green-700 font-semibold' : 'text-slate-600 hover:bg-slate-50 font-medium' }} px-4 py-3.5 text-sm transition-colors">
+        <i class="fa-solid fa-users w-5 text-center text-lg {{ request()->routeIs('admin.customer_index') ? '' : 'text-slate-400' }}"></i> Database Pelanggan
     </a>
 
     <p class="px-4 pb-2 pt-6 text-xs font-bold uppercase tracking-wider text-slate-400">Keuangan</p>
