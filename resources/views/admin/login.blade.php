@@ -66,19 +66,13 @@
                 <p class="text-[13px] text-gray-500">Silakan masukkan email dan kata sandi Anda.</p>
             </div>
 
-            @if(session('error'))
-                <div class="mb-5 rounded-lg bg-red-50 p-3 text-center text-[13px] font-medium text-red-600 border border-red-100">
-                    {{ session('error') }}
-                </div>
-            @endif
-
             <form action="{{ route('admin.login.submit') }}" method="POST">
                 @csrf
                 
                 <div class="mb-5">
                     <label for="email" class="block text-[14px] font-semibold text-gray-700 mb-2">Email Address</label>
                     <input type="email" id="email" name="email" required placeholder="Contoh: admin@jogjaresik.com"
-                        class="w-full bg-[#F9FAFB] border border-gray-200 text-gray-900 text-[15px] rounded-xl focus:ring-2 focus:ring-[#0FA958] focus:border-[#0FA958] block px-4 py-3.5 outline-none transition-all">
+                        class="w-full bg-[#F9FAFB] border border-gray-200 text-gray-900 text-[15px] rounded-xl focus:ring-2 focus:ring-[#0FA958] focus:border-[#0FA958] block px-4 py-3.5 outline-none transition-all" value="{{ old('email') }}">
                 </div>
 
                 <div class="mb-8">
@@ -95,24 +89,37 @@
 
             <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-                @if(session('success'))
-                    <script>
-                        document.addEventListener('DOMContentLoaded', function() {
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'Berhasil Keluar!',
-                                text: '{{ session('success') }}',
-                                timer: 3000, // Alert akan hilang otomatis dalam 3 detik
-                                showConfirmButton: false,
-                                toast: true, // Ubah jadi false jika ingin alert besar di tengah layar
-                                position: 'top-end' // Posisi di pojok kanan atas
-                            });
+            {{-- SWEET ALERT UNTUK ERROR LOGIN & ERROR 419 (Sesuai VN Bos) --}}
+            @if(session('error'))
+                <script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Pemberitahuan',
+                            text: '{!! session('error') !!}',
+                            confirmButtonColor: '#0FA958',
+                            customClass: { popup: 'rounded-3xl' }
                         });
-                    </script>
-                @endif
-            </body>
-            </html>
+                    });
+                </script>
+            @endif
 
+            {{-- SWEET ALERT UNTUK LOGOUT BERHASIL --}}
+            @if(session('success'))
+                <script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil Keluar!',
+                            text: '{{ session('success') }}',
+                            timer: 3000, 
+                            showConfirmButton: false,
+                            toast: true, 
+                            position: 'top-end' 
+                        });
+                    });
+                </script>
+            @endif
         </div>
     </div>
 

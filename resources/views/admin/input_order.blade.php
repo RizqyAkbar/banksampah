@@ -190,7 +190,12 @@
                     <button type="reset" class="w-full sm:w-auto px-4 sm:px-6 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm font-semibold text-slate-600 bg-white hover:bg-slate-50 transition-colors">
                         Bersihkan Form
                     </button>
-                    <button type="submit" class="w-full sm:w-auto px-4 sm:px-6 py-3 sm:py-2.5 rounded-xl bg-[#00C264] text-white text-xs sm:text-sm font-semibold hover:bg-[#009B4E] shadow-[0_8px_20px_rgba(0,194,100,0.2)] transition-all transform hover:-translate-y-0.5">
+                    {{-- TOMBOL 1: SIMPAN SAJA --}}
+                    <button type="submit" name="action" value="save_only" class="w-full sm:w-auto px-4 sm:px-6 py-3 sm:py-2.5 rounded-xl bg-slate-800 text-white text-xs sm:text-sm font-semibold hover:bg-slate-900 shadow-lg transition-all transform hover:-translate-y-0.5">
+                        <i class="fa-solid fa-floppy-disk mr-1.5 sm:mr-2"></i> Simpan Saja
+                    </button>
+                    {{-- TOMBOL 2: SIMPAN & KIRIM WA --}}
+                    <button type="submit" name="action" value="save_and_wa" class="w-full sm:w-auto px-4 sm:px-6 py-3 sm:py-2.5 rounded-xl bg-[#00C264] text-white text-xs sm:text-sm font-semibold hover:bg-[#009B4E] shadow-[0_8px_20px_rgba(0,194,100,0.2)] transition-all transform hover:-translate-y-0.5">
                         <i class="fa-solid fa-paper-plane mr-1.5 sm:mr-2"></i> Simpan & Kirim WA
                     </button>
                 </div>

@@ -21,11 +21,20 @@
                 <label class="block text-[10px] sm:text-xs font-bold text-slate-400 uppercase mb-1.5">Sampai Tanggal</label>
                 <input type="date" name="tgl_selesai" value="{{ request('tgl_selesai') }}" class="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-400/20 transition-all">
             </div>
+            
+            {{-- REVISI: TAMBAH DROPDOWN FILTER STATUS REKAP --}}
+            <div class="w-full md:w-auto">
+                <label class="block text-[10px] sm:text-xs font-bold text-slate-400 uppercase mb-1.5">Status Rekap</label>
+                <select name="filter" class="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-400/20 transition-all">
+                    <option value="">Semua Order</option>
+                    <option value="belum_rekap" {{ request('filter') == 'belum_rekap' ? 'selected' : '' }}>Belum Rekap</option>
+                </select>
+            </div>
+
             <div class="w-full md:w-auto flex flex-col sm:flex-row gap-2">
                 <button type="submit" class="h-11 px-5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition shadow-lg flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider w-full sm:w-auto">
                     <i class="fa-solid fa-magnifying-glass"></i> Filter
                 </button>
-                {{-- Tombol Export akan mengirimkan value "excel" untuk ditangkap oleh Controller --}}
                 <button type="submit" name="export" value="excel" class="h-11 px-5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition shadow-lg flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider w-full sm:w-auto">
                     <i class="fa-solid fa-file-excel"></i> Export
                 </button>
@@ -54,7 +63,8 @@
                 </thead>
                 <tbody class="divide-y divide-slate-100">
                     @forelse($orders as $item)
-                    <tr class="hover:bg-slate-50/50 transition-colors">
+                    {{-- REVISI HIGHLIGHT: Baris akan berwarna kemerahan jika belum rekap --}}
+                    <tr class="transition-colors {{ $item->total_pendapatan == 0 ? 'bg-rose-50/40 hover:bg-rose-50/60' : 'hover:bg-slate-50/50' }}">
                         <td class="px-6 py-4 font-bold text-slate-500 text-center">{{ ($orders->currentPage() - 1) * $orders->perPage() + $loop->iteration }}</td>
                         
                         <td class="px-6 py-4 font-medium text-slate-900 whitespace-nowrap">
@@ -115,7 +125,14 @@
                         </td>
 
                         <td class="px-6 py-4 font-bold text-slate-900 whitespace-nowrap">
-                            Rp {{ number_format($item->total_pendapatan, 0, ',', '.') }}
+                            {{-- REVISI LABEL BELUM REKAP --}}
+                            @if($item->total_pendapatan == 0)
+                                <span class="inline-flex items-center gap-1.5 rounded-lg bg-rose-100 px-2.5 py-1.5 text-[11px] font-bold text-rose-600 border border-rose-200 shadow-sm">
+                                    <i class="fa-solid fa-circle-exclamation"></i> Belum Rekap
+                                </span>
+                            @else
+                                Rp {{ number_format($item->total_pendapatan, 0, ',', '.') }}
+                            @endif
                         </td>
 
                         <td class="px-6 py-4 text-right">

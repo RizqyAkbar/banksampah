@@ -53,9 +53,15 @@ class DriverController extends Controller
             'plat_armada' => 'nullable|string',
         ]);
 
+        // REVISI LOGIKA PEMBERSIHAN WA
+        $wa = preg_replace('/\D/', '', $request->no_wa_sopir);
+        if (str_starts_with($wa, '0')) $wa = substr($wa, 1);
+        if (str_starts_with($wa, '62')) $wa = substr($wa, 2);
+        $noWaFinal = '62' . $wa;
+
         Driver::create([
             'nama_sopir' => $request->nama_sopir,
-            'no_wa_sopir' => '62' . ltrim($request->no_wa_sopir, '0'),
+            'no_wa_sopir' => $noWaFinal,
             'plat_armada' => $request->plat_armada ? strtoupper($request->plat_armada) : null,
         ]);
 
@@ -72,9 +78,15 @@ class DriverController extends Controller
             'plat_armada' => 'nullable|string', 
         ]);
 
+        // REVISI LOGIKA PEMBERSIHAN WA
+        $wa = preg_replace('/\D/', '', $request->no_wa_sopir);
+        if (str_starts_with($wa, '0')) $wa = substr($wa, 1);
+        if (str_starts_with($wa, '62')) $wa = substr($wa, 2);
+        $noWaFinal = '62' . $wa;
+
         $driver->update([
             'nama_sopir' => $request->nama_sopir,
-            'no_wa_sopir' => $request->no_wa_sopir,
+            'no_wa_sopir' => $noWaFinal,
             'plat_armada' => $request->plat_armada ? strtoupper($request->plat_armada) : null,
         ]);
 

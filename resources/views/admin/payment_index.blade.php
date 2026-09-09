@@ -25,13 +25,14 @@
                 <input type="date" name="tgl_selesai" value="{{ request('tgl_selesai') }}" class="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-400/20 transition-all">
             </div>
             
-            {{-- Pertahankan parameter filter status jika ada (Lunas/Belum Lunas) --}}
+            {{-- Pertahankan parameter filter status jika ada (Lunas/Belum Lunas/Semua) --}}
             @if(request('filter'))
                 <input type="hidden" name="filter" value="{{ request('filter') }}">
             @endif
 
             <div class="w-full md:w-auto flex flex-col sm:flex-row gap-2">
-                <a href="{{ route('admin.payment_index') }}" class="h-11 px-5 bg-slate-100 text-slate-500 rounded-xl hover:bg-slate-200 transition shadow-sm flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider w-full sm:w-auto">
+                {{-- REVISI: Reset sekarang diarahkan ke semua (hapus semua query string) --}}
+                <a href="{{ route('admin.payment_index', ['filter' => 'semua']) }}" class="h-11 px-5 bg-slate-100 text-slate-500 rounded-xl hover:bg-slate-200 transition shadow-sm flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider w-full sm:w-auto">
                     <i class="fa-solid fa-arrows-rotate"></i> Reset
                 </a>
                 <button type="submit" class="h-11 px-5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition shadow-lg flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider w-full sm:w-auto">
@@ -51,11 +52,11 @@
                 <p class="text-xs text-slate-500 mt-1">Pantau pelunasan tagihan pelanggan secara realtime.</p>
             </div>
 
-            {{-- TOMBOL FILTER KHUSUS STATUS --}}
+            {{-- TOMBOL FILTER KHUSUS STATUS (REVISI: Default Belum Lunas) --}}
             <div class="flex flex-wrap gap-2 w-full sm:w-auto">
-                <a href="{{ route('admin.payment_index') }}" class="px-4 py-2 text-xs font-bold rounded-xl border {{ !request('filter') ? 'bg-slate-900 text-white' : 'bg-white text-slate-600' }}">Semua</a>
+                <a href="{{ route('admin.payment_index', ['filter' => 'semua']) }}" class="px-4 py-2 text-xs font-bold rounded-xl border {{ request('filter') == 'semua' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600' }}">Semua</a>
                 <a href="{{ route('admin.payment_index', ['filter' => 'lunas']) }}" class="px-4 py-2 text-xs font-bold rounded-xl border {{ request('filter') == 'lunas' ? 'bg-emerald-600 text-white' : 'bg-white text-emerald-600 border-emerald-100' }}">Lunas</a>
-                <a href="{{ route('admin.payment_index', ['filter' => 'belum_lunas']) }}" class="px-4 py-2 text-xs font-bold rounded-xl border {{ request('filter') == 'belum_lunas' ? 'bg-rose-600 text-white' : 'bg-white text-rose-600 border-rose-100' }}">Belum Lunas</a>
+                <a href="{{ route('admin.payment_index', ['filter' => 'belum_lunas']) }}" class="px-4 py-2 text-xs font-bold rounded-xl border {{ (!request()->has('filter') || request('filter') == 'belum_lunas') ? 'bg-rose-600 text-white' : 'bg-white text-rose-600 border-rose-100' }}">Belum Lunas</a>
             </div>
         </div>
 

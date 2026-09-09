@@ -63,7 +63,7 @@ class OrderController extends Controller
         return Excel::download(new LaporanExport($request), "Laporan_Performa_Jasa_{$tgl}.xlsx");
     }
 
-    // 2. Menyimpan Input Order & KIRIM WA (INTEGRASI FONNTE API)
+    // 2. Menyimpan Input Order & KIRIM WA
     public function store(Request $request)
     {
         $request->validate([
@@ -81,7 +81,6 @@ class OrderController extends Controller
 
         $tanggalFormat = date('Ymd');
 
-        // Logika Nomor Invoice Unik
         $lastOrderToday = Order::whereDate('created_at', Carbon::today())->latest()->first();
         if ($lastOrderToday && $lastOrderToday->no_invoice) {
             $lastIncrement = (int) substr($lastOrderToday->no_invoice, -3);
@@ -93,16 +92,12 @@ class OrderController extends Controller
         $nomorUrut = str_pad($nextIncrement, 3, '0', STR_PAD_LEFT);
         $noInvoiceFinal = "INV-$tanggalFormat-$nomorUrut";
 
-        // === LOGIKA CUSTOMER DATABASE (BARU) ===
-        // Cari apakah nomor WA ini sudah pernah order sebelumnya di tabel customers
         $customer = \App\Models\Customer::where('no_wa', $noWaFinal)->first();
 
         if ($customer) {
-            // Jika sudah ada, tambah jumlah ordernya + 1
             $newJumlahOrder = $customer->jumlah_order + 1;
             $newStatus = ($newJumlahOrder >= 2) ? 'Pelanggan' : 'Konsumen Baru';
 
-            // Update profil customer yang sudah ada
             $customer->update([
                 'nama_pelanggan'   => $request->nama_pelanggan, 
                 'alamat'           => $request->alamat, 
@@ -113,7 +108,6 @@ class OrderController extends Controller
             
             $statusPelanggan = $newStatus;
         } else {
-            // Jika belum ada, buat profil customer baru
             \App\Models\Customer::create([
                 'nama_pelanggan'   => $request->nama_pelanggan,
                 'no_wa'            => $noWaFinal,
@@ -125,7 +119,6 @@ class OrderController extends Controller
             
             $statusPelanggan = 'Konsumen Baru';
         }
-        // ======================================
 
         $order = Order::create([
             'nama_pelanggan'   => $request->nama_pelanggan,
@@ -168,77 +161,72 @@ class OrderController extends Controller
                 'status_item'   => 'Aktif',
             ]);
 
-            // Simpan array untuk teks WA
             $listLayanan[] = $namaJasaFinal;
             $listArmada[] = $armadaFinal;
             $listEstimasi[] = $rit . " " . $armadaFinal;
         }
 
-        // ==========================================
-        // BUILD TEMPLATE PESAN WA
-        // ==========================================
-        Carbon::setLocale('id');
-        $tanggalIndo = Carbon::parse($request->penjadwalan)->translatedFormat('l, d F Y');
+        if ($request->action === 'save_and_wa') {
+            Carbon::setLocale('id');
+            $tanggalIndo = Carbon::parse($request->penjadwalan)->translatedFormat('l, d F Y');
 
-        $pesanWA = "Formulir Order *JURAGAN URUG*\n";
-        $pesanWA .= "_______\n";
-        $pesanWA .= "*Tanggal :* " . $tanggalIndo . "\n";
-        $pesanWA .= "*Nama :* " . $request->nama_pelanggan . "\n";
-        $pesanWA .= "*Lokasi :* " . $request->alamat . "\n";
-        
-        // Link otomatis bisa diklik di WA selama diawali http/https
-        if ($request->link_maps) {
-            $pesanWA .= trim($request->link_maps) . "\n";
+            $pesanWA = "Formulir Order *JURAGAN URUG*\n";
+            $pesanWA .= "_______\n";
+            $pesanWA .= "*Tanggal :* " . $tanggalIndo . "\n";
+            $pesanWA .= "*Nama :* " . $request->nama_pelanggan . "\n";
+            $pesanWA .= "*Lokasi :* " . $request->alamat . "\n";
+            
+            if ($request->link_maps) {
+                $pesanWA .= trim($request->link_maps) . "\n";
+            }
+            
+            $pesanWA .= "_______\n";
+            $pesanWA .= "*Jenis Layanan :* " . implode(', ', array_unique($listLayanan)) . "\n";
+            $pesanWA .= "*Armada :* " . implode(', ', array_unique($listArmada)) . "\n";
+            $pesanWA .= "*Estimasi :* " . implode(', ', $listEstimasi) . "\n";
+            $pesanWA .= "*Foto Proyek :* _Terlampir_\n";
+            $pesanWA .= "_______\n";
+            $pesanWA .= "*Catatan penting:*\n" . ($request->catatan ?? '-') . "\n\n";
+            $pesanWA .= "> _Pesan dikirim otomatis dari sistem Juragan Urug_"; // Teks tambahan baru
+
+            $curl = curl_init();
+            curl_setopt_array($curl, array(
+                CURLOPT_URL => 'https://api.fonnte.com/send',
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_ENCODING => '',
+                CURLOPT_MAXREDIRS => 10,
+                CURLOPT_TIMEOUT => 0,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                CURLOPT_CUSTOMREQUEST => 'POST',
+                CURLOPT_POSTFIELDS => array(
+                    'target' => $noWaFinal,
+                    'message' => $pesanWA, 
+                ),
+                CURLOPT_HTTPHEADER => array(
+                    'Authorization: 3ujshugpoSMCyDpKjVtJ'
+                ),
+            ));
+            $response = curl_exec($curl);
+            curl_close($curl);
+
+            $waLink = 'https://wa.me/' . $noWaFinal . '?text=' . urlencode($pesanWA);
+
+            return redirect()->back()->with([
+                'success' => 'Order tersimpan & Formulir Order sedang dikirim otomatis ke WA Pelanggan!',
+                'wa_link' => $waLink
+            ]);
         }
-        
-        $pesanWA .= "_______\n";
-        $pesanWA .= "*Jenis Layanan :* " . implode(', ', array_unique($listLayanan)) . "\n";
-        $pesanWA .= "*Armada :* " . implode(', ', array_unique($listArmada)) . "\n";
-        $pesanWA .= "*Estimasi :* " . implode(', ', $listEstimasi) . "\n";
-        $pesanWA .= "*Foto Proyek :* _Terlampir_\n";
-        $pesanWA .= "_______\n";
-        $pesanWA .= "*Catatan penting:*\n" . ($request->catatan ?? '-');
-
-        // ==========================================
-        // EKSEKUSI API FONNTE
-        // ==========================================
-        $curl = curl_init();
-        curl_setopt_array($curl, array(
-            CURLOPT_URL => 'https://api.fonnte.com/send',
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_ENCODING => '',
-            CURLOPT_MAXREDIRS => 10,
-            CURLOPT_TIMEOUT => 0,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-            CURLOPT_CUSTOMREQUEST => 'POST',
-            CURLOPT_POSTFIELDS => array(
-                'target' => $noWaFinal,
-                'message' => $pesanWA, 
-            ),
-            CURLOPT_HTTPHEADER => array(
-                'Authorization: 3ujshugpoSMCyDpKjVtJ' // Token Client
-            ),
-        ));
-        $response = curl_exec($curl);
-        curl_close($curl);
-
-        // Buat wa.me link manual sebagai backup tombol
-        $waLink = 'https://wa.me/' . $noWaFinal . '?text=' . urlencode($pesanWA);
 
         return redirect()->back()->with([
-            'success' => 'Order tersimpan & Formulir Order sedang dikirim otomatis oleh sistem ke WA Pelanggan!',
-            'wa_link' => $waLink
+            'success' => 'Order berhasil disimpan (Tanpa Kirim WA)!'
         ]);
     }
 
-    // 3. Halaman REKAP ORDER (DENGAN FITUR SEARCH, FILTER TANGGAL & EXPORT)
+    // 3. Halaman REKAP ORDER
     public function index(Request $request)
     {
-        // --- LOGIKA EXPORT EXCEL LANGSUNG MENGGUNAKAN ORDEREXPORT ---
         if ($request->has('export') && $request->export == 'excel') {
-            // Berikan default range jika user mengekspor tanpa memfilter tanggal
-            // Karena ini penjadwalan (bisa masa depan), kita set batas atas ke 5 tahun ke depan
             $tgl_mulai = $request->tgl_mulai ?: '2023-01-01'; 
             $tgl_selesai = $request->tgl_selesai ?: \Carbon\Carbon::now()->addYears(5)->format('Y-m-d');
             
@@ -248,7 +236,6 @@ class OrderController extends Controller
             );
         }
 
-        // --- LOGIKA NORMAL (TAMPILAN WEB & PAGINATION) ---
         $query = Order::with(['items' => function ($query) {
                 $query->where('status_item', 'Aktif');
             }])
@@ -278,8 +265,13 @@ class OrderController extends Controller
             $query->whereBetween('penjadwalan', [$request->tgl_mulai, $request->tgl_selesai]);
         }
 
+        // --- FITUR BARU: FILTER BELUM REKAP ---
+        if ($request->filled('filter') && $request->filter == 'belum_rekap') {
+            $query->where('total_pendapatan', 0);
+        }
+
         $orders = $query->orderBy('created_at', 'desc')->paginate(10);
-        $orders->appends($request->all()); // Mempertahankan parameter filter saat pindah page
+        $orders->appends($request->all());
 
         return view('admin.rekap_order', compact('orders'));
     }
@@ -308,21 +300,17 @@ class OrderController extends Controller
         $totalKeuntunganOrder = 0;
         $perubahanKolektif = [];
 
-        // --- 1. PROSES HAPUS LAYANAN (Jika admin menghapus baris dari DOM) ---
         $submittedItemIds = collect($request->item_id)->filter(function ($val) {
-            return $val !== 'new'; // Buang ID yang bertuliskan 'new'
+            return $val !== 'new'; 
         })->toArray();
 
-        // Cari item di database yang ID-nya TIDAK ADA di form yang dikirimkan (artinya telah dihapus admin)
         $itemsToDelete = $order->items()->whereNotIn('id', $submittedItemIds)->get();
         foreach($itemsToDelete as $delItem) {
             $perubahanKolektif[] = "Layanan Dihapus: [" . $delItem->jenis_layanan . " - " . $delItem->armada . "]";
             $delItem->delete();
         }
 
-        // --- 2. PROSES UPDATE & INSERT LAYANAN BARU ---
         foreach ($request->item_id as $index => $itemId) {
-            // Ambil Data dari Form
             $jenisLayananInput = $request->jenis_layanan[$index];
             $jenisLayananFinal = ($jenisLayananInput === 'LAINNYA')
                 ? ($request->layanan_manual[$index] ?? $jenisLayananInput)
@@ -335,7 +323,6 @@ class OrderController extends Controller
             $hargaFinal  = $request->harga_per_rit[$index] ?? 0;
             $hppFinal    = $request->hpp_per_rit[$index] ?? 0;
 
-            // Logika Format WhatsApp Sopir
             $noWaInput = $request->no_wa_sopir[$index];
             $noWaFinal = null;
             if ($noWaInput) {
@@ -347,11 +334,9 @@ class OrderController extends Controller
                 }
             }
 
-            // Perhitungan Subtotal
             $subPendapatan = $ritFinal * $hargaFinal;
             $subKeuntungan = $subPendapatan - ($ritFinal * $hppFinal);
 
-            // JIKA BARIS TERSEBUT ADALAH DATA BARU YANG DITAMBAH DI VIEW
             if ($itemId === 'new') {
                 $order->items()->create([
                     'jenis_layanan' => $jenisLayananFinal,
@@ -370,9 +355,7 @@ class OrderController extends Controller
                 
                 $totalPendapatanOrder += $subPendapatan;
                 $totalKeuntunganOrder += $subKeuntungan;
-            } 
-            // JIKA BARIS TERSEBUT ADALAH UPDATE DARI DATA LAMA
-            else {
+            } else {
                 $item = OrderItem::findOrFail($itemId);
 
                 $sopirLama = $item->nama_sopir;
@@ -423,7 +406,6 @@ class OrderController extends Controller
             }
         }
 
-        // SIMPAN SEMUA LOG PERUBAHAN KE DATABASE
         if (count($perubahanKolektif) > 0) {
             foreach ($perubahanKolektif as $logItem) {
                 OrderLog::create([
@@ -436,7 +418,6 @@ class OrderController extends Controller
             }
         }
 
-        // UPDATE TOTAL NOTA KE TABEL ORDERS
         $order->update([
             'total_pendapatan' => $totalPendapatanOrder,
             'total_keuntungan' => $totalKeuntunganOrder,
@@ -448,8 +429,6 @@ class OrderController extends Controller
         return redirect()->route('admin.rekap_order')->with('success', 'Data Rekap dan Layanan Berhasil diperbarui!');
     }
 
-    // REVISI: Penambahan logika search, filter tanggal, dan export excel untuk Invoice Index
-    // --- FUNGSI TAMPILAN WEB INVOICE ---
     public function invoiceIndex(Request $request)
     {
         $query = Order::with(['items' => function ($query) {
@@ -481,7 +460,6 @@ class OrderController extends Controller
         return view('admin.invoice_index', compact('orders'));
     }
 
-    // --- FUNGSI KHUSUS EXPORT EXCEL INVOICE ---
     public function exportInvoice(Request $request)
     {
         return Excel::download(
@@ -490,58 +468,38 @@ class OrderController extends Controller
         );
     }
 
-
-    // --- TAMBAHAN: FUNGSI KIRIM INVOICE OTOMATIS VIA FONNTE ---
     public function sendInvoiceWA($id)
     {
         $order = Order::with(['items' => function ($query) {
             $query->where('status_item', 'Aktif');
         }])->findOrFail($id);
 
-        // Format ulang nomor WA untuk jaga-jaga
         $noWaFinal = preg_replace('/[^0-9]/', '', $order->no_wa);
         if (!str_starts_with($noWaFinal, '62')) {
             $noWaFinal = '62' . ltrim($noWaFinal, '0');
         }
 
-        // Merakit Pesan Invoice (Update Template Client)
-        $pesanWA = "Halo " . $order->nama_pelanggan . ",\n\n";
-        $pesanWA .= "Berikut kami sampaikan rincian tagihan layanan dari Juragan Urug:\n\n";
+        $pesanWA = "Halo *" . $order->nama_pelanggan . "*,\n\n";
+        $pesanWA .= "Berikut kami sampaikan rincian tagihan layanan dari *Juragan Urug*:\n\n";
         
         foreach($order->items as $srv) {
             $pesanWA .= "• " . $srv->jenis_layanan . " (" . $srv->jumlah_rit . " rit): Rp " . number_format($srv->jumlah_rit * $srv->harga_per_rit, 0, ',', '.') . "\n";
         }
         
-        $pesanWA .= "\nTotal Tagihan: Rp " . number_format($order->total_pendapatan, 0, ',', '.') . "\n\n";
+        $pesanWA .= "\n*Total Tagihan: Rp " . number_format($order->total_pendapatan, 0, ',', '.') . "*\n\n";
         $pesanWA .= "Mohon untuk dapat dilakukan pembayaran sesuai dengan total tagihan di atas.\n\n";
-        $pesanWA .= "Terima kasih atas kepercayaan Anda menggunakan layanan Juragan Urug.";
+        $pesanWA .= "Terima kasih atas kepercayaan Anda menggunakan layanan *Juragan Urug*.\n\n";
+        $pesanWA .= "> _Pesan dikirim otomatis dari sistem Juragan Urug_"; // Teks tambahan baru
 
-        // Hit ke API Fonnte
-        $curl = curl_init();
-        curl_setopt_array($curl, array(
-            CURLOPT_URL => 'https://api.fonnte.com/send',
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_ENCODING => '',
-            CURLOPT_MAXREDIRS => 10,
-            CURLOPT_TIMEOUT => 0,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-            CURLOPT_CUSTOMREQUEST => 'POST',
-            CURLOPT_POSTFIELDS => array(
-                'target' => $noWaFinal,
-                'message' => $pesanWA, 
-            ),
-            CURLOPT_HTTPHEADER => array(
-                'Authorization: 3ujshugpoSMCyDpKjVtJ'
-            ),
-        ));
-        $response = curl_exec($curl);
-        curl_close($curl);
+        // URL untuk membuka WA Web / Mobile
+        $waLink = 'https://wa.me/' . $noWaFinal . '?text=' . urlencode($pesanWA);
 
-        return redirect()->back()->with('success', 'Invoice berhasil dikirim ke WhatsApp Pelanggan!');
+        return redirect()->back()->with([
+            'success' => 'Template pesan WA siap. Silakan klik tombol di bawah untuk diarahkan ke WhatsApp.',
+            'wa_link' => $waLink
+        ]);
     }
 
-    // REVISI: Fungsi Detail untuk Modal Preview
     public function getDetail($id)
     {
         $order = Order::with(['items' => function ($query) {
@@ -556,7 +514,6 @@ class OrderController extends Controller
         ]);
     }
 
-    // REVISI: Fungsi Print Invoice (Sesuai Desain PDF)
     public function invoicePrint($id)
     {
         $order = Order::with(['items' => function ($query) {
@@ -566,7 +523,6 @@ class OrderController extends Controller
         return view('admin.invoice_print', compact('order'));
     }
 
-    // --- REVISI: PAYMENT INDEX MEMPRIORITASKAN 'BELUM LUNAS' DI ATAS ---
     public function paymentIndex(Request $request)
     {
         if ($request->has('export') && $request->export == 'excel') {
@@ -581,11 +537,14 @@ class OrderController extends Controller
 
         $query = Order::where('total_pendapatan', '>', 0)->where('status_order', 'Aktif');
 
-        if ($request->filter == 'lunas') {
-            $query->where('status_pembayaran', 'Lunas');
-        } elseif ($request->filter == 'belum_lunas') {
+        // REVISI: Logika Default Filter 'Belum Lunas'
+        // Jika tidak ada parameter filter di URL sama sekali ATAU filternya 'belum_lunas'
+        if (!$request->has('filter') || $request->filter == 'belum_lunas') {
             $query->whereIn('status_pembayaran', ['Belum Lunas', 'Cicil']);
+        } elseif ($request->filter == 'lunas') {
+            $query->where('status_pembayaran', 'Lunas');
         }
+        // Jika filternya 'semua', query tidak perlu di-where lagi (tampil semua)
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -601,7 +560,6 @@ class OrderController extends Controller
             $query->whereBetween('penjadwalan', [$request->tgl_mulai, $request->tgl_selesai]);
         }
 
-        // PENGURUTAN PRIORITAS: Belum Lunas (1), Cicil (2), Lunas (3)
         $orders = $query->orderByRaw("CASE 
                                         WHEN status_pembayaran = 'Belum Lunas' THEN 1
                                         WHEN status_pembayaran = 'Cicil' THEN 2
@@ -637,22 +595,17 @@ class OrderController extends Controller
 
     public function laporan(Request $request)
     {
-        // --- LOGIKA EXPORT EXCEL ---
-        // Jika tombol Export ditekan, lemparkan keseluruhan request ke LaporanExport
         if ($request->has('export') && $request->export == 'excel') {
             $tgl = date('d-m-Y');
             return Excel::download(new LaporanExport($request), "Laporan_Performa_Jasa_{$tgl}.xlsx");
         }
 
-        // --- LOGIKA NORMAL (VIEW TABEL DI BROWSER) ---
-        // Kita gunakan query dari tabel OrderItem agar bisa memfilter per Jenis Jasa, Sopir, dan Plat
         $query = OrderItem::with('order')
             ->join('orders', 'order_items.order_id', '=', 'orders.id')
             ->where('orders.status_order', 'Aktif')
             ->where('order_items.status_item', 'Aktif')
             ->where('order_items.subtotal_pendapatan', '>', 0);
 
-        // --- FILTERING ---
         if ($request->filled('nama')) {
             $query->where('orders.nama_pelanggan', 'like', '%' . $request->nama . '%');
         }
@@ -669,12 +622,10 @@ class OrderController extends Controller
             $query->whereBetween('orders.penjadwalan', [$request->tgl_mulai, $request->tgl_selesai]);
         }
 
-        // --- HITUNG RINGKASAN ---
         $totalNominal = $query->sum('order_items.subtotal_pendapatan');
         $totalLabaKotor = $query->sum('order_items.subtotal_keuntungan');
         $totalLayanan = $query->count();
 
-        // --- HITUNG PENGELUARAN & LABA BERSIH ---
         $queryPengeluaran = Pengeluaran::query();
         if ($request->filled('tgl_mulai') && $request->filled('tgl_selesai')) {
             $queryPengeluaran->whereBetween('tanggal', [$request->tgl_mulai, $request->tgl_selesai]);
@@ -682,12 +633,10 @@ class OrderController extends Controller
         $totalPengeluaran = $queryPengeluaran->sum('nominal');
         $labaBersih = $totalLabaKotor - $totalPengeluaran;
 
-        // --- DATA UNTUK TABEL & DROPDOWN ---
         $orders = $query->select('order_items.*', 'orders.penjadwalan', 'orders.nama_pelanggan', 'orders.no_wa')
             ->orderBy('orders.penjadwalan', 'desc')
             ->paginate(25);
             
-        // Appends agar query filter tidak hilang saat pindah halaman (pagination)
         $orders->appends($request->all());
 
         $daftarLayanan = Service::distinct()->pluck('nama_layanan');
@@ -705,7 +654,6 @@ class OrderController extends Controller
 
     public function getRealtimeDashboard()
     {
-        // REVISI LOGIKA BADGE: Hanya hitung order AKTIF yang totalnya 0 DAN masih punya item AKTIF
         $badgeCount = Order::where('status_order', 'Aktif')
             ->where('total_pendapatan', 0)
             ->whereHas('items', function ($query) {
@@ -713,10 +661,8 @@ class OrderController extends Controller
             })
             ->count();
 
-        // Gunakan Carbon Jakarta agar sinkron dengan real life
         $today = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d');
 
-        // Pastikan memuat relasi items yang aktif saja agar tabel sinkron
         $jadwalHariIni = Order::with(['items' => function ($query) {
             $query->where('status_item', 'Aktif');
         }])
@@ -733,12 +679,10 @@ class OrderController extends Controller
         ]);
     }
 
-    // --- HALAMAN MONITORING CANCEL (TAMPILAN WEB) ---
     public function indexCancel(Request $request)
     {
         $query = OrderItem::with('order')->where('status_item', 'Batal');
 
-        // PENCARIAN (Search)
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
@@ -750,7 +694,6 @@ class OrderController extends Controller
             });
         }
 
-        // FILTER TANGGAL 
         if ($request->filled('tgl_mulai') && $request->filled('tgl_selesai')) {
             $start = $request->tgl_mulai . " 00:00:00";
             $end = $request->tgl_selesai . " 23:59:59";
@@ -763,10 +706,8 @@ class OrderController extends Controller
         return view('admin.rekap_cancel', compact('orders'));
     }
 
-    // --- FUNGSI KHUSUS EXPORT EXCEL MONITORING CANCEL ---
     public function exportCancel(Request $request)
     {
-        // Memanggil class CancelExport yang baru saja kita buat
         return Excel::download(
             new \App\Exports\CancelExport($request), 
             "Monitoring_Cancel_" . date('Ymd_His') . ".xlsx"
@@ -803,7 +744,6 @@ class OrderController extends Controller
             'alasan_cancel' => $request->alasan_cancel
         ]);
 
-        // Hitung ulang total di tabel orders
         $this->recalculateOrder($item->order_id);
 
         return back()->with('success', 'Layanan berhasil dibatalkan.');
@@ -815,7 +755,6 @@ class OrderController extends Controller
         $orderId = $item->order_id;
         $item->delete();
 
-        // Hitung ulang total di tabel orders
         $this->recalculateOrder($orderId);
 
         return back()->with('success', 'Layanan dihapus permanen.');
@@ -826,13 +765,11 @@ class OrderController extends Controller
         $item = OrderItem::findOrFail($id);
         $item->update(['status_item' => 'Aktif', 'alasan_cancel' => null]);
 
-        // Hitung ulang total di tabel orders
         $this->recalculateOrder($item->order_id);
 
         return back()->with('success', 'Layanan diaktifkan kembali.');
     }
 
-    // Fungsi pembantu untuk update total pendapatan nota secara otomatis
     private function recalculateOrder($orderId)
     {
         $order = Order::with('items')->find($orderId);

@@ -94,10 +94,9 @@
                                     <i class="fa-solid fa-print text-sm"></i>
                                 </button>
 
-                                {{-- REVISI: TOMBOL WA MENGGUNAKAN FORM POST KE API FONNTE --}}
                                 <form action="{{ route('admin.invoice.send_wa', $item->id) }}" method="POST" class="m-0 p-0 inline-block form-kirim-wa">
                                     @csrf
-                                    <button type="button" class="btn-kirim-wa p-2 rounded-lg bg-green-50 text-green-600 hover:bg-green-600 hover:text-white transition-all shadow-sm" title="Kirim Invoice via WA (Otomatis)">
+                                    <button type="button" class="btn-kirim-wa p-2 rounded-lg bg-green-50 text-green-600 hover:bg-green-600 hover:text-white transition-all shadow-sm" title="Kirim Invoice via WA">
                                         <i class="fa-brands fa-whatsapp text-sm"></i>
                                     </button>
                                 </form>
@@ -257,7 +256,6 @@
         }
 
         document.addEventListener('click', function(e) {
-            // Logika untuk tombol hapus
             if (e.target.closest('.btn-hapus')) {
                 const form = e.target.closest('.form-hapus');
                 Swal.fire({
@@ -272,44 +270,44 @@
                 }).then((result) => { if (result.isConfirmed) form.submit(); })
             }
 
-            // Logika baru untuk tombol Kirim WA (Fonnte API)
+            // REVISI: Logika tombol WA langsung submit form tanpa pop-up konfirmasi
             if (e.target.closest('.btn-kirim-wa')) {
                 const form = e.target.closest('.form-kirim-wa');
                 Swal.fire({
-                    title: 'Kirim Invoice ke Pelanggan?',
-                    text: "Invoice akan dikirim otomatis via WhatsApp melalui server (Fonnte).",
-                    icon: 'question',
-                    showCancelButton: true,
-                    confirmButtonColor: '#25D366',
-                    cancelButtonColor: '#64748b',
-                    confirmButtonText: '<i class="fa-brands fa-whatsapp mr-1"></i> Ya, Kirim!',
-                    cancelButtonText: 'Batal',
-                    reverseButtons: true,
-                    heightAuto: false
-                }).then((result) => { 
-                    if (result.isConfirmed) {
-                        Swal.fire({
-                            title: 'Mengirim Pesan...',
-                            text: 'Mohon tunggu sebentar.',
-                            allowOutsideClick: false,
-                            didOpen: () => { Swal.showLoading(); }
-                        });
-                        form.submit(); 
-                    } 
+                    title: 'Memproses WhatsApp...',
+                    text: 'Mohon tunggu sebentar.',
+                    allowOutsideClick: false,
+                    showConfirmButton: false,
+                    didOpen: () => { Swal.showLoading(); }
                 });
+                form.submit(); 
             }
         });
     </script>
 
-    {{-- Alert notifikasi sukses setelah form disubmit --}}
+    {{-- REVISI: Otomatis buka tab WhatsApp setelah halaman ter-refresh --}}
     @if(session('success'))
     <script>
-        Swal.fire({
-            toast: true, position: 'top-end', icon: 'success',
-            title: 'Berhasil!', text: '{{ session('success') }}',
-            showConfirmButton: false, timer: 4000,
-            customClass: { popup: 'rounded-2xl shadow-lg border border-green-100', title: 'font-heading font-bold text-slate-900' }
-        });
+        @if(session('wa_link'))
+            // Langsung otomatis buka WhatsApp di Tab Baru
+            window.open('{!! session('wa_link') !!}', '_blank');
+            
+            // Beri notifikasi toast ringan bahwa proses sukses
+            Swal.fire({
+                toast: true, position: 'top-end', icon: 'success',
+                title: 'Membuka WhatsApp...', 
+                text: 'Silakan cek tab baru browser Anda.',
+                showConfirmButton: false, timer: 5000,
+                customClass: { popup: 'rounded-2xl shadow-lg border border-green-100', title: 'font-heading font-bold text-slate-900' }
+            });
+        @else
+            Swal.fire({
+                toast: true, position: 'top-end', icon: 'success',
+                title: 'Berhasil!', text: '{{ session('success') }}',
+                showConfirmButton: false, timer: 4000,
+                customClass: { popup: 'rounded-2xl shadow-lg border border-green-100', title: 'font-heading font-bold text-slate-900' }
+            });
+        @endif
     </script>
     @endif
 @endsection

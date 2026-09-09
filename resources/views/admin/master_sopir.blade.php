@@ -156,7 +156,6 @@
             </table>
         </div>
 
-        {{-- REVISI: Pagination --}}
         <div class="p-6 border-t border-slate-100 bg-slate-50/30">
             {{ $drivers->appends(request()->query())->links() }}
         </div>
@@ -223,22 +222,6 @@
         
         modal.classList.remove('hidden');
     }
-
-    document.getElementById('formTambah').onsubmit = function() {
-        const inputWa = document.querySelector('#formTambah input[name="no_wa_sopir"]');
-        let value = inputWa.value.replace(/\D/g, ''); 
-        if (value.startsWith('0')) value = value.substring(1);
-        if (value.startsWith('62')) value = value.substring(2);
-        inputWa.value = '62' + value;
-    };
-
-    document.getElementById('formEdit').onsubmit = function() {
-        const inputWa = document.getElementById('edit_wa');
-        let value = inputWa.value.replace(/\D/g, ''); 
-        if (value.startsWith('0')) value = value.substring(1);
-        if (value.startsWith('62')) value = value.substring(2);
-        inputWa.value = '62' + value;
-    };
 
     function closeModal() {
         document.getElementById('modalEdit').classList.add('hidden');

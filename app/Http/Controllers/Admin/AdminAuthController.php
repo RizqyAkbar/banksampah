@@ -13,8 +13,6 @@ class AdminAuthController extends Controller
      */
     public function showLoginForm()
     {
-        // Pastikan kodingan form login Anda sebelumnya disimpan 
-        // di folder: resources/views/admin/login.blade.php
         return view('admin.login');
     }
 
@@ -23,7 +21,7 @@ class AdminAuthController extends Controller
      */
     public function login(Request $request)
     {
-        // 1. Validasi inputan (pastikan tidak ada yang kosong dan format email benar)
+        // 1. Validasi inputan
         $request->validate([
             'email' => 'required|email',
             'password' => 'required',
@@ -35,18 +33,14 @@ class AdminAuthController extends Controller
             'password' => $request->password,
         ];
 
-        // 3. Coba cocokkan dengan database (Auth::attempt otomatis mengecek password yang di-hash)
+        // 3. Coba cocokkan dengan database
         if (Auth::attempt($credentials)) {
-            // Jika berhasil: buat sesi baru untuk keamanan
             $request->session()->regenerate();
-
-            // Redirect ke halaman dashboard
             return redirect()->intended(route('admin.dashboard'));
         }
 
-        // 4. Jika gagal: Kembalikan ke halaman login dengan notifikasi error
-        // (Sesuai dengan kodingan Blade Anda yang menggunakan session('error'))
-        return back()->with('error', 'Email atau kata sandi salah. Silakan coba lagi.');
+        // 4. Teks error diubah sesuai arahan bos untuk memperjelas jika ada salah input atau sesi idle
+        return back()->withInput()->with('error', 'Email/Kata sandi salah, atau sesi login Anda telah habis. Silakan coba lagi.');
     }
 
     /**
@@ -56,11 +50,9 @@ class AdminAuthController extends Controller
     {
         Auth::logout();
 
-        // Hapus semua sesi
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        // Arahkan kembali ke halaman login
         return redirect()->route('admin.login')->with('success', 'Anda telah berhasil logout dari sistem.');
     }
 }
